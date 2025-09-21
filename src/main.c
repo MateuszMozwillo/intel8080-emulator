@@ -2,9 +2,6 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-#define PC program_counter
-#define SP stack_pointer
-
 #define HALT 0b01110110
 
 typedef enum {
@@ -18,6 +15,34 @@ typedef enum {
     A
 } Register;
 
+#define HL_VAL ((registers[H] << 8) + registers[L])
+
+Register extract_dst_reg(uint8_t instruction) {
+    switch (instruction & 0x38) {
+    case 0x38: return A;
+    case 0x00: return B;
+    case 0x08: return C;
+    case 0x10: return D;
+    case 0x18: return E;
+    case 0x20: return H;
+    case 0x28: return L;
+    case 0x39: return M;
+    }
+}
+
+Register extract_src_reg(uint8_t instruction) {
+    switch (instruction & 0x07) {
+    case 0x07: return A;
+    case 0x00: return B;
+    case 0x01: return C;
+    case 0x02: return D;
+    case 0x03: return E;
+    case 0x04: return H;
+    case 0x05: return L;
+    case 0x06: return M;
+    }
+}
+
 int main() {
 
     uint8_t mem[] = {
@@ -27,41 +52,35 @@ int main() {
 
     uint8_t registers[8] = {0, 0, 0, 0, 0, 0, -1, 0};
 
-    uint16_t program_counter = 0;
-    uint16_t stack_pointer = 0;
+    uint16_t pc = 0;
+    uint16_t sp = 0;
 
-    while(mem[PC] != HALT) {
+    printf("%d\n", HL_VAL);
+
+    while(mem[pc] != HALT) {
         // MOV 01DDDSSS
-        if ((mem[PC] & 0b11000000) == 0b01000000) {
-            Register destination;
-            Register source;
-            if ((mem[PC] & 0b00111000) == 0b00111000) { destination = A; };
-            if ((mem[PC] & 0b00111000) == 0b00000000) { destination = B; };
-            if ((mem[PC] & 0b00111000) == 0b00001000) { destination = C; };
-            if ((mem[PC] & 0b00111000) == 0b00010000) { destination = D; };
-            if ((mem[PC] & 0b00111000) == 0b00011000) { destination = E; };
-            if ((mem[PC] & 0b00111000) == 0b00100000) { destination = H; };
-            if ((mem[PC] & 0b00111000) == 0b00101000) { destination = L; };
-            if ((mem[PC] & 0b00111000) == 0b00110000) { destination = M; };
+        if ((mem[pc] & 0b11000000) == 0b01000000) {
+            Register dst = extract_dst_reg(mem[pc]);
+            Register src = extract_src_reg(mem[pc]);
 
-            if ((mem[PC] & 0b00000111) == 0b00000111) { source = A; };
-            if ((mem[PC] & 0b00000111) == 0b00000000) { source = B; };
-            if ((mem[PC] & 0b00000111) == 0b00000001) { source = C; };
-            if ((mem[PC] & 0b00000111) == 0b00000010) { source = D; };
-            if ((mem[PC] & 0b00000111) == 0b00000011) { source = E; };
-            if ((mem[PC] & 0b00000111) == 0b00000100) { source = H; };
-            if ((mem[PC] & 0b00000111) == 0b00000101) { source = L; };
-            if ((mem[PC] & 0b00000111) == 0b00000110) { source = M; };
-
-            if ((destination != M) && (source != M)) {
-                registers[destination] = registers[source];
+            if ((dst != M) && (src != M)) {
+                registers[dst] = registers[src];
             }
 
-            if ((destination == M) && (source != M)) {
-                
+            if ((dst == M) && (src != M)) {
+                mem[HL_VAL] = registers[src];
             }
 
+            if ((dst != M) && (src == M)) {
+                registers[dst] = mem[HL_VAL];
+            }
         }
+
+        // MVI 00DDD110 db
+        if ((mem[pc] & 0b11000111) == 0b00000110) {
+            
+        }
+        pc++;
     }
 
 }
