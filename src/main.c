@@ -15,31 +15,31 @@ typedef enum {
     A
 } Register;
 
-#define HL_VAL ((registers[H] << 8) + registers[L])
+#define HL_VAL (uint16_t)((registers[H] << 8) + registers[L])
 
 Register extract_dst_reg(uint8_t instruction) {
     switch (instruction & 0x38) {
-    case 0x38: return A;
-    case 0x00: return B;
-    case 0x08: return C;
-    case 0x10: return D;
-    case 0x18: return E;
-    case 0x20: return H;
-    case 0x28: return L;
-    case 0x39: return M;
+        case 0x38: return A;
+        case 0x00: return B;
+        case 0x08: return C;
+        case 0x10: return D;
+        case 0x18: return E;
+        case 0x20: return H;
+        case 0x28: return L;
+        case 0x39: return M;
     }
 }
 
 Register extract_src_reg(uint8_t instruction) {
     switch (instruction & 0x07) {
-    case 0x07: return A;
-    case 0x00: return B;
-    case 0x01: return C;
-    case 0x02: return D;
-    case 0x03: return E;
-    case 0x04: return H;
-    case 0x05: return L;
-    case 0x06: return M;
+        case 0x07: return A;
+        case 0x00: return B;
+        case 0x01: return C;
+        case 0x02: return D;
+        case 0x03: return E;
+        case 0x04: return H;
+        case 0x05: return L;
+        case 0x06: return M;
     }
 }
 
@@ -78,7 +78,14 @@ int main() {
 
         // MVI 00DDD110 db
         if ((mem[pc] & 0b11000111) == 0b00000110) {
-            
+            Register dst = extract_dst_reg(mem[pc]);
+            pc++;
+            uint8_t immediate = mem[pc];
+            if (dst != M) {
+                registers[dst] = immediate;
+            } else if (dst == M) {
+                mem[HL_VAL] = immediate;
+            }
         }
         pc++;
     }
