@@ -18,32 +18,37 @@ typedef enum {
 #define HL_VAL (uint16_t)((registers[H] << 8) + registers[L])
 
 Register extract_dst_reg(uint8_t instruction) {
-    switch (instruction & 0x38) {
-        case 0x38: return A;
-        case 0x00: return B;
-        case 0x08: return C;
-        case 0x10: return D;
-        case 0x18: return E;
-        case 0x20: return H;
-        case 0x28: return L;
-        case 0x39: return M;
-    }
+    return (Register)((instruction >> 3) & 0x07);
 }
 
 Register extract_src_reg(uint8_t instruction) {
-    switch (instruction & 0x07) {
-        case 0x07: return A;
-        case 0x00: return B;
-        case 0x01: return C;
-        case 0x02: return D;
-        case 0x03: return E;
-        case 0x04: return H;
-        case 0x05: return L;
-        case 0x06: return M;
-    }
+    return (Register)(instruction & 0x07);
+}
+
+typedef struct {
+    uint8_t a;
+    uint8_t b;
+    uint8_t c;
+    uint8_t d;
+    uint8_t e;
+    uint8_t h;
+    uint8_t l;
+
+    uint16_t sp;
+    uint16_t pc;
+
+    uint8_t mem[0x10000];
+} CpuState;
+
+void cpu_set_reg(CpuState* cpu, Register reg, uint8_t to_set) {
+
 }
 
 int main() {
+
+    CpuState cpu;
+    cpu.mem[0] = 0b01000001; // MOV B C
+    cpu.mem[1] = 0b01110110; // HALT
 
     uint8_t mem[] = {
         0b01000001, // MOV B C
@@ -55,8 +60,6 @@ int main() {
     uint16_t pc = 0;
     uint16_t sp = 0;
 
-    printf("%d\n", HL_VAL);
-
     while(mem[pc] != HALT) {
         // MOV 01DDDSSS
         if ((mem[pc] & 0b11000000) == 0b01000000) {
@@ -65,13 +68,11 @@ int main() {
 
             if ((dst != M) && (src != M)) {
                 registers[dst] = registers[src];
-            }
-
-            if ((dst == M) && (src != M)) {
+            } 
+            else if ((dst == M) && (src != M)) {
                 mem[HL_VAL] = registers[src];
-            }
-
-            if ((dst != M) && (src == M)) {
+            } 
+            else if ((dst != M) && (src == M)) {
                 registers[dst] = mem[HL_VAL];
             }
         }
