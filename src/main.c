@@ -5,21 +5,21 @@
 #define HALT 0b01110110
 
 typedef enum {
-    B,
-    C,
-    D,
-    E,
-    H,
-    L,
-    M,
-    A
+    REG_B,
+    REG_C,
+    REG_D,
+    REG_E,
+    REG_H,
+    REG_L,
+    REG_M,
+    REG_A
 } Register;
 
-Register extract_dst_reg(uint8_t instruction) {
+static inline Register extract_dst_reg(uint8_t instruction) {
     return (Register)((instruction >> 3) & 0x07);
 }
 
-Register extract_src_reg(uint8_t instruction) {
+static inline Register extract_src_reg(uint8_t instruction) {
     return (Register)(instruction & 0x07);
 }
 
@@ -30,52 +30,55 @@ typedef struct {
 
     uint8_t flag_reg;
 
+    uint64_t cycle;
+
     uint8_t* mem;
 } CpuState;
 
-uint16_t get_hl(CpuState *cpu) {
+static inline uint16_t cpu_get_hl(CpuState *cpu) {
     return (((uint16_t)cpu->h << 8) | cpu->l);
 }
 
-uint8_t cpu_read_reg(CpuState *cpu, Register r) {
+static inline uint8_t cpu_read_reg(CpuState *cpu, Register r) {
     switch(r) {
-        case M: return get_hl(cpu);
-        case B: return cpu->b;
-        case C: return cpu->c;
-        case D: return cpu->d;
-        case E: return cpu->e;
-        case H: return cpu->h;
-        case L: return cpu->l;
-        case A: return cpu->a;
+        case REG_M: return cpu_get_hl(cpu);
+        case REG_B: return cpu->b;
+        case REG_C: return cpu->c;
+        case REG_D: return cpu->d;
+        case REG_E: return cpu->e;
+        case REG_H: return cpu->h;
+        case REG_L: return cpu->l;
+        case REG_A: return cpu->a;
     }
 }
 
-void cpu_set_reg(CpuState *cpu, Register r, uint8_t val) {
+static inline void cpu_set_reg(CpuState *cpu, Register r, uint8_t val) {
     switch(r) {
-        case M: cpu->mem[get_hl(cpu)] = val; break;
-        case B: cpu->b = val; break;
-        case C: cpu->c = val; break;
-        case D: cpu->d = val; break;
-        case E: cpu->e = val; break;
-        case H: cpu->h = val; break;
-        case L: cpu->l = val; break;
-        case A: cpu->a = val; break;
+        case REG_M: cpu->mem[cpu_get_hl(cpu)] = val; break;
+        case REG_B: cpu->b = val; break;
+        case REG_C: cpu->c = val; break;
+        case REG_D: cpu->d = val; break;
+        case REG_E: cpu->e = val; break;
+        case REG_H: cpu->h = val; break;
+        case REG_L: cpu->l = val; break;
+        case REG_A: cpu->a = val; break;
     }
 }
 
-// MOV 01DDDSSS
-void cpu_mov(CpuState *cpu, uint8_t opcode) {
+// MOV 01DDDSSS         (moves DDD reg to SSS reg)
+static inline void cpu_mov(CpuState *cpu, uint8_t opcode) {
     Register dst = extract_dst_reg(opcode);
     Register src = extract_src_reg(opcode);
     cpu_set_reg(cpu, dst, cpu_read_reg(cpu, src));
+    cpu->pc++;
 }
 
-// MVI 00DDD110 db
-void cpu_mvi(CpuState *cpu, uint8_t opcode) {
+// MVI 00DDD110 db      (moves immediate to DDD reg)
+static inline void cpu_mvi(CpuState *cpu, uint8_t opcode) {
     Register dst = extract_dst_reg(opcode);
-    cpu->pc++;
-    uint8_t immediate = cpu->mem[cpu->pc];
+    uint8_t immediate = cpu->mem[cpu->pc+1];
     cpu_set_reg(cpu, dst, immediate);
+    cpu->pc += 2;
 }
 
 int main() {
@@ -99,7 +102,5 @@ int main() {
             cpu_mvi(&cpu, opcode);
         }
 
-        cpu.pc++;
     }
-
 }
