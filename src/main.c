@@ -15,8 +15,6 @@ typedef enum {
     A
 } Register;
 
-#define HL_VAL (uint16_t)((registers[H] << 8) + registers[L])
-
 Register extract_dst_reg(uint8_t instruction) {
     return (Register)((instruction >> 3) & 0x07);
 }
@@ -26,69 +24,80 @@ Register extract_src_reg(uint8_t instruction) {
 }
 
 typedef struct {
-    uint8_t a;
-    uint8_t b;
-    uint8_t c;
-    uint8_t d;
-    uint8_t e;
-    uint8_t h;
-    uint8_t l;
+    uint8_t a, b, c, d, e, h, l;
 
-    uint16_t sp;
-    uint16_t pc;
+    uint16_t sp, pc;
 
-    uint8_t mem[0x10000];
+    uint8_t* mem;
 } CpuState;
 
-void cpu_set_reg(CpuState* cpu, Register reg, uint8_t to_set) {
+uint16_t get_hl(CpuState *cpu) {
+    return (((uint16_t)cpu->h << 8) | cpu->l);
+}
 
+uint8_t cpu_read_reg(CpuState *cpu, Register r) {
+    switch(r) {
+        case M: return get_hl(cpu);
+        case B: return cpu->b;
+        case C: return cpu->c;
+        case D: return cpu->d;
+        case E: return cpu->e;
+        case H: return cpu->h;
+        case L: return cpu->l;
+        case A: return cpu->a;
+    }
+}
+
+void cpu_set_reg(CpuState *cpu, Register r, uint8_t val) {
+    switch(r) {
+        case M: cpu->mem[get_hl(cpu)] = val; break;
+        case B: cpu->b = val; break;
+        case C: cpu->c = val; break;
+        case D: cpu->d = val; break;
+        case E: cpu->e = val; break;
+        case H: cpu->h = val; break;
+        case L: cpu->l = val; break;
+        case A: cpu->a = val; break;
+    }
+}
+
+// MOV 01DDDSSS
+void cpu_mov(CpuState *cpu, uint8_t opcode) {
+    Register dst = extract_dst_reg(opcode);
+    Register src = extract_src_reg(opcode);
+    cpu_set_reg(cpu, dst, cpu_read_reg(cpu, src));
+}
+
+// MVI 00DDD110 db
+void cpu_mvi(CpuState *cpu, uint8_t opcode) {
+    Register dst = extract_dst_reg(opcode);
+    cpu->pc++;
+    uint8_t immediate = cpu->mem[cpu->pc];
+    cpu_set_reg(cpu, dst, immediate);
 }
 
 int main() {
-
-    CpuState cpu;
-    cpu.mem[0] = 0b01000001; // MOV B C
-    cpu.mem[1] = 0b01110110; // HALT
 
     uint8_t mem[] = {
         0b01000001, // MOV B C
         0b01110110, // HALT
     };
 
-    uint8_t registers[8] = {0, 0, 0, 0, 0, 0, -1, 0};
+    CpuState cpu = {0};
+    cpu.mem = mem;
 
-    uint16_t pc = 0;
-    uint16_t sp = 0;
+    while(cpu.mem[cpu.pc] != HALT) {
+        uint8_t opcode = cpu.mem[cpu.pc];
 
-    while(mem[pc] != HALT) {
-        // MOV 01DDDSSS
-        if ((mem[pc] & 0b11000000) == 0b01000000) {
-            Register dst = extract_dst_reg(mem[pc]);
-            Register src = extract_src_reg(mem[pc]);
-
-            if ((dst != M) && (src != M)) {
-                registers[dst] = registers[src];
-            } 
-            else if ((dst == M) && (src != M)) {
-                mem[HL_VAL] = registers[src];
-            } 
-            else if ((dst != M) && (src == M)) {
-                registers[dst] = mem[HL_VAL];
-            }
+        if ((opcode & 0b11000000) == 0b01000000) {
+            cpu_mov(&cpu, opcode);
+        }
+        
+        else if ((opcode & 0b11000111) == 0b00000110) {
+            cpu_mvi(&cpu, opcode);
         }
 
-        // MVI 00DDD110 db
-        if ((mem[pc] & 0b11000111) == 0b00000110) {
-            Register dst = extract_dst_reg(mem[pc]);
-            pc++;
-            uint8_t immediate = mem[pc];
-            if (dst != M) {
-                registers[dst] = immediate;
-            } else if (dst == M) {
-                mem[HL_VAL] = immediate;
-            }
-        }
-        pc++;
+        cpu.pc++;
     }
 
 }
