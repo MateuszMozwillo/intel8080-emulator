@@ -28,6 +28,8 @@ typedef struct {
 
     uint16_t sp, pc;
 
+    uint8_t flag_reg;
+
     uint8_t* mem;
 } CpuState;
 
