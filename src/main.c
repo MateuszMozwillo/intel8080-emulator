@@ -87,7 +87,7 @@ static inline uint16_t cpu_get_reg_pair(CpuState *cpu, RegisterPair rp) {
 
 static inline uint8_t cpu_read_reg(CpuState *cpu, Register r) {
     switch(r) {
-        case REG_M: return cpu_get_hl(cpu);
+        case REG_M: return cpu->mem[cpu_get_hl(cpu)];
         case REG_B: return cpu->b;
         case REG_C: return cpu->c;
         case REG_D: return cpu->d;
