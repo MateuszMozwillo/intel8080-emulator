@@ -18,10 +18,10 @@ typedef enum {
 } Register;
 
 typedef enum {
-    REG_P_BC,
-    REG_P_DE,
-    REG_P_HL,
-    REG_P_SP
+    RP_BC,
+    RP_DE,
+    RP_HL,
+    RP_SP
 } RegisterPair;
 
 typedef enum {
@@ -69,19 +69,19 @@ static inline uint16_t lb_hb_to_uint16(uint8_t low_byte, uint8_t high_byte) {
 
 static inline void cpu_set_reg_pair(CpuState *cpu, RegisterPair rp, uint8_t low_byte, uint8_t high_byte) {
     switch(rp) {
-        case REG_P_BC: cpu->b = high_byte; cpu->c = low_byte; break;
-        case REG_P_DE: cpu->d = high_byte; cpu->e = low_byte; break;
-        case REG_P_HL: cpu->h = high_byte; cpu->l = low_byte; break;
-        case REG_P_SP: cpu->sp = lb_hb_to_uint16(low_byte, high_byte); break;
+        case RP_BC: cpu->b = high_byte; cpu->c = low_byte; break;
+        case RP_DE: cpu->d = high_byte; cpu->e = low_byte; break;
+        case RP_HL: cpu->h = high_byte; cpu->l = low_byte; break;
+        case RP_SP: cpu->sp = lb_hb_to_uint16(low_byte, high_byte); break;
     }
 }
 
 static inline uint16_t cpu_get_reg_pair(CpuState *cpu, RegisterPair rp) {
     switch(rp) {
-        case REG_P_BC: return lb_hb_to_uint16(cpu->c, cpu->b);
-        case REG_P_DE: return lb_hb_to_uint16(cpu->e, cpu->d);
-        case REG_P_HL: return lb_hb_to_uint16(cpu->l, cpu->h);
-        case REG_P_SP: return cpu->sp;
+        case RP_BC: return lb_hb_to_uint16(cpu->c, cpu->b);
+        case RP_DE: return lb_hb_to_uint16(cpu->e, cpu->d);
+        case RP_HL: return lb_hb_to_uint16(cpu->l, cpu->h);
+        case RP_SP: return cpu->sp;
     }
 }
 
@@ -153,7 +153,7 @@ static inline void cpu_sta(CpuState *cpu, uint8_t opcode) {
 
 // LHLD 00101010 lb hb   (load hl pair from mem)
 static inline void cpu_lhld(CpuState *cpu, uint8_t opcode) {
-    cpu_set_reg_pair(cpu, REG_P_HL, read_byte(cpu, 1), read_byte(cpu, 2));
+    cpu_set_reg_pair(cpu, RP_HL, read_byte(cpu, 1), read_byte(cpu, 2));
     cpu->pc += 3;
 }
 
@@ -170,13 +170,13 @@ static inline void cpu_ldax(CpuState *cpu, uint8_t opcode) {
     cpu->pc += 1;
 }
 
-// STAX 00RP0010          (stores value from A reg to adress from RP)
+// STAX 00RP0010         (stores value from A reg to adress from RP)
 static inline void cpu_stax(CpuState *cpu, uint8_t opcode) {
     cpu->mem[cpu_get_reg_pair(cpu, extract_reg_pair(opcode))] = cpu->a;
     cpu->pc += 1;
 }
 
-// XCHG 11101011          (exchanges hl with de)
+// XCHG 11101011         (exchanges hl with de)
 static inline void cpu_xchg(CpuState *cpu, uint8_t opcode) {
     uint8_t temp_l = cpu->l;
     uint8_t temp_h = cpu->h;
