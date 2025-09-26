@@ -153,7 +153,9 @@ static inline void cpu_sta(CpuState *cpu, uint8_t opcode) {
 
 // LHLD 00101010 lb hb   (load hl pair from mem)
 static inline void cpu_lhld(CpuState *cpu, uint8_t opcode) {
-    cpu_set_reg_pair(cpu, RP_HL, read_byte(cpu, 1), read_byte(cpu, 2));
+    uint16_t addr = lb_hb_to_uint16(read_byte(cpu, 1), read_byte(cpu, 2));
+    cpu->l = cpu->mem[addr];
+    cpu->h = cpu->mem[addr + 1];
     cpu->pc += 3;
 }
 
