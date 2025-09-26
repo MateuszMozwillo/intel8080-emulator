@@ -15,6 +15,24 @@ typedef enum {
     REG_A
 } Register;
 
+typedef enum {
+    REG_P_BC,
+    REG_P_DE,
+    REG_P_HL,
+    REG_P_SP
+} RegisterPair;
+
+typedef enum {
+    CC_NZ,
+    CC_Z,
+    CC_NC,
+    CC_C,
+    CC_PO,
+    CC_PE,
+    CC_P,
+    CC_M
+} ConditionCode;
+
 static inline Register extract_dst_reg(uint8_t instruction) {
     return (Register)((instruction >> 3) & 0x07);
 }
@@ -79,6 +97,11 @@ static inline void cpu_mvi(CpuState *cpu, uint8_t opcode) {
     uint8_t immediate = cpu->mem[cpu->pc+1];
     cpu_set_reg(cpu, dst, immediate);
     cpu->pc += 2;
+}
+
+// LXI 00RP0001 lb hb   (loads 16 bit immediate to register pair)
+static inline void cpu_lxi(CpuState *cpu, uint8_t opcode) {
+
 }
 
 int main() {
