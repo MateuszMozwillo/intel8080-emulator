@@ -76,6 +76,15 @@ static inline void cpu_set_reg_pair(CpuState *cpu, RegisterPair rp, uint8_t low_
     }
 }
 
+static inline uint16_t cpu_get_reg_pair(CpuState *cpu, RegisterPair rp) {
+    switch(rp) {
+        case REG_P_BC: return lb_hb_to_uint16(cpu->c, cpu->b);
+        case REG_P_DE: return lb_hb_to_uint16(cpu->e, cpu->d);
+        case REG_P_HL: return lb_hb_to_uint16(cpu->l, cpu->h);
+        case REG_P_SP: return cpu->sp;
+    }
+}
+
 static inline uint8_t cpu_read_reg(CpuState *cpu, Register r) {
     switch(r) {
         case REG_M: return cpu_get_hl(cpu);
@@ -157,7 +166,25 @@ static inline void cpu_shld(CpuState *cpu, uint8_t opcode) {
 
 // LDAX 00RP1010         (loads value from address from RP to A reg only BC or DE)
 static inline void cpu_ldax(CpuState *cpu, uint8_t opcode) {
-    
+    cpu->a = cpu->mem[cpu_get_reg_pair(cpu, extract_reg_pair(opcode))];
+    cpu->pc += 1;
+}
+
+// STAX 00RP0010          (stores value from A reg to adress from RP)
+static inline void cpu_stax(CpuState *cpu, uint8_t opcode) {
+    cpu->mem[cpu_get_reg_pair(cpu, extract_reg_pair(opcode))] = cpu->a;
+    cpu->pc += 1;
+}
+
+// XCHG 11101011          (exchanges hl with de)
+static inline void cpu_xchg(CpuState *cpu, uint8_t opcode) {
+    uint8_t temp_l = cpu->l;
+    uint8_t temp_h = cpu->h;
+    cpu->l = cpu->e;
+    cpu->h = cpu->d;
+    cpu->e = temp_l;
+    cpu->d = temp_h;
+    cpu->pc += 1;
 }
 
 int main() {
