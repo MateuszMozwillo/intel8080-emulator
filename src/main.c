@@ -208,12 +208,26 @@ static inline void cpu_xchg(CpuState *cpu) {
 
 // ADD 10000SSS          (add register to A)
 static inline void cpu_add(CpuState *cpu) {
-    uint16_t result = cpu_read_reg(cpu, REG_A) + cpu_read_reg(cpu, extract_src_reg(read_byte(cpu, 0)));
+    uint8_t a = cpu_read_reg(cpu, REG_A);
+    uint8_t b = cpu_read_reg(cpu, extract_src_reg(read_byte(cpu, 0)));
+    uint16_t result = a + b;
 
-
-
+    cpu_handle_zspca_flags(cpu, a, b, result);
 
     cpu_set_reg(cpu, REG_A, (uint8_t)result);
+    cpu->pc += 1;
+}
+
+// ADI 10000110  db      (add register to A)
+static inline void cpu_add(CpuState *cpu) {
+    uint8_t a = cpu_read_reg(cpu, REG_A);
+    uint8_t b = read_byte(cpu, 1);
+    uint16_t result = a + b;
+
+    cpu_handle_zspca_flags(cpu, a, b, result);
+
+    cpu_set_reg(cpu, REG_A, (uint8_t)result);
+    cpu->pc += 2;
 }
 
 bool bitwise_parity(uint8_t n) {
@@ -224,40 +238,16 @@ bool bitwise_parity(uint8_t n) {
         }
         n >>= 1;
     }
-    return n & 0x01;
+    return count & 0x01;
 }
 
-static inline bool has_ac(uint8_t a, uint8_t b) {
-    uint8_t result = a + b;
-    return (a ^ b ^ result) & 0x10;
-}
-
-static inline void cpu_handle_zspc_flags(CpuState *cpu, uint16_t result) {
-    if (result == 0x00) {
-        cpu_set_flag(cpu, F_ZERO, 1);
-    } else {
-        cpu_set_flag(cpu, F_ZERO, 0);
-    }
-
-    if ((result >> 7) == 0x01) {
-        cpu_set_flag(cpu, F_SIGN, 1);
-    } else {
-        cpu_set_flag(cpu, F_SIGN, 0);
-    }
-
-    if (bitwise_parity(result)) {
-        cpu_set_flag(cpu, F_PARITY, 1);
-    } else {
-        cpu_set_flag(cpu, F_PARITY, 0);
-    }
-
-    if ((result >> 8) == 0x01) {
-        cpu_set_flag(cpu, F_CARRY, 1);
-    } else {
-        cpu_set_flag(cpu, F_CARRY, 0);
-    }
-
-}
+static inline void cpu_handle_zspca_flags(CpuState *cpu, uint8_t a, uint8_t b, uint16_t result) {
+    cpu_set_flag(cpu, F_ZERO, (uint8_t)result == 0x00);
+    cpu_set_flag(cpu, F_SIGN, ((uint8_t)result >> 7) == 0x01);
+    cpu_set_flag(cpu, F_PARITY, bitwise_parity((uint8_t)result));
+    cpu_set_flag(cpu, F_CARRY, result > 0xFF);
+    cpu_set_flag(cpu, F_AUXILARY, (a ^ b ^ result) & 0x10);
+} 
 
 int main() {
 
