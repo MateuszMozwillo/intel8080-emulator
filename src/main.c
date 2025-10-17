@@ -1,10 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
-
-#define HALT 0b01110110
-
-// sources: http://dunfield.classiccmp.org/r/8080.txt, https://pastraiser.com/cpu/i8080/i8080_opcodes.html
+#include <stdbool.h>
 
 typedef enum {
     REG_B,
@@ -35,6 +32,14 @@ typedef enum {
     CC_M
 } ConditionCode;
 
+typedef enum {
+    F_CARRY = 0,
+    F_PARITY = 2,
+    F_AUXILARY = 4,
+    F_ZERO = 6,
+    F_SIGN = 7
+} FlagRegisterBit;
+
 static inline Register extract_dst_reg(uint8_t opcode) {
     return (Register)((opcode >> 3) & 0x07);
 }
@@ -58,6 +63,18 @@ typedef struct {
 
     uint8_t* mem;
 } CpuState;
+
+static inline bool cpu_get_flag(CpuState *cpu, FlagRegisterBit flag) {
+    return (cpu->flag_reg >> flag) & 0x01; 
+}
+
+static inline void cpu_set_flag(CpuState *cpu, FlagRegisterBit flag, bool val_to_set) {
+    if (val_to_set == 1) {
+        cpu->flag_reg |= (0x01 << flag);
+    } else {
+        cpu->flag_reg &= ~(0x01 << flag);
+    }
+}
 
 static inline uint16_t cpu_get_hl(CpuState *cpu) {
     return (((uint16_t)cpu->h << 8) | cpu->l);
@@ -117,42 +134,42 @@ static inline uint8_t read_byte(CpuState *cpu, uint8_t pc_offset) {
 }
 
 // MOV  01DDDSSS         (moves DDD reg to SSS reg)
-static inline void cpu_mov(CpuState *cpu, uint8_t opcode) {
-    Register dst = extract_dst_reg(opcode);
-    Register src = extract_src_reg(opcode);
+static inline void cpu_mov(CpuState *cpu) {
+    Register dst = extract_dst_reg(read_byte(cpu, 0));
+    Register src = extract_src_reg(read_byte(cpu, 0));
     cpu_set_reg(cpu, dst, cpu_read_reg(cpu, src));
     cpu->pc += 1;
 }
 
 // MVI  00DDD110 db      (moves immediate to DDD reg)
-static inline void cpu_mvi(CpuState *cpu, uint8_t opcode) {
-    Register dst = extract_dst_reg(opcode);
+static inline void cpu_mvi(CpuState *cpu) {
+    Register dst = extract_dst_reg(read_byte(cpu, 0));
     uint8_t immediate = read_byte(cpu, 1);
     cpu_set_reg(cpu, dst, immediate);
     cpu->pc += 2;
 }
 
 // LXI  00RP0001 lb hb   (loads 16 bit immediate to register pair)
-static inline void cpu_lxi(CpuState *cpu, uint8_t opcode) {
-    RegisterPair dst = extract_reg_pair(opcode);
+static inline void cpu_lxi(CpuState *cpu) {
+    RegisterPair dst = extract_reg_pair(read_byte(cpu, 0));
     cpu_set_reg_pair(cpu, dst, read_byte(cpu, 1), read_byte(cpu, 2));
     cpu->pc += 3;
 }
 
 // LDA  00111010 lb hb   (loads data from address to reg A)
-static inline void cpu_lda(CpuState *cpu, uint8_t opcode) {
+static inline void cpu_lda(CpuState *cpu) {
     cpu->a = cpu->mem[lb_hb_to_uint16(read_byte(cpu, 1), read_byte(cpu, 2))];
     cpu->pc += 3;
 }
 
 // STA  00110010 lb hb   (stores reg A to address)
-static inline void cpu_sta(CpuState *cpu, uint8_t opcode) {
+static inline void cpu_sta(CpuState *cpu) {
     cpu->mem[lb_hb_to_uint16(read_byte(cpu, 1), read_byte(cpu, 2))] = cpu->a;
     cpu->pc += 3;
 }
 
 // LHLD 00101010 lb hb   (load hl pair from mem)
-static inline void cpu_lhld(CpuState *cpu, uint8_t opcode) {
+static inline void cpu_lhld(CpuState *cpu) {
     uint16_t addr = lb_hb_to_uint16(read_byte(cpu, 1), read_byte(cpu, 2));
     cpu->l = cpu->mem[addr];
     cpu->h = cpu->mem[addr + 1];
@@ -160,26 +177,26 @@ static inline void cpu_lhld(CpuState *cpu, uint8_t opcode) {
 }
 
 // SHLD 00100010 lb hb   (stores hl to mem)
-static inline void cpu_shld(CpuState *cpu, uint8_t opcode) {
+static inline void cpu_shld(CpuState *cpu) {
     cpu->mem[lb_hb_to_uint16(read_byte(cpu, 1), read_byte(cpu, 2))] = cpu_read_reg(cpu, REG_L);
     cpu->mem[lb_hb_to_uint16(read_byte(cpu, 1), read_byte(cpu, 2))+1] = cpu_read_reg(cpu, REG_H);
     cpu->pc += 3;
 }
 
 // LDAX 00RP1010         (loads value from address from RP to A reg only BC or DE)
-static inline void cpu_ldax(CpuState *cpu, uint8_t opcode) {
-    cpu->a = cpu->mem[cpu_get_reg_pair(cpu, extract_reg_pair(opcode))];
+static inline void cpu_ldax(CpuState *cpu) {
+    cpu->a = cpu->mem[cpu_get_reg_pair(cpu, extract_reg_pair(read_byte(cpu, 0)))];
     cpu->pc += 1;
 }
 
 // STAX 00RP0010         (stores value from A reg to adress from RP)
-static inline void cpu_stax(CpuState *cpu, uint8_t opcode) {
-    cpu->mem[cpu_get_reg_pair(cpu, extract_reg_pair(opcode))] = cpu->a;
+static inline void cpu_stax(CpuState *cpu) {
+    cpu->mem[cpu_get_reg_pair(cpu, extract_reg_pair(read_byte(cpu, 0)))] = cpu->a;
     cpu->pc += 1;
 }
 
 // XCHG 11101011         (exchanges hl with de)
-static inline void cpu_xchg(CpuState *cpu, uint8_t opcode) {
+static inline void cpu_xchg(CpuState *cpu) {
     uint8_t temp_l = cpu->l;
     uint8_t temp_h = cpu->h;
     cpu->l = cpu->e;
@@ -187,6 +204,59 @@ static inline void cpu_xchg(CpuState *cpu, uint8_t opcode) {
     cpu->e = temp_l;
     cpu->d = temp_h;
     cpu->pc += 1;
+}
+
+// ADD 10000SSS          (add register to A)
+static inline void cpu_add(CpuState *cpu) {
+    uint16_t result = cpu_read_reg(cpu, REG_A) + cpu_read_reg(cpu, extract_src_reg(read_byte(cpu, 0)));
+
+
+
+
+    cpu_set_reg(cpu, REG_A, (uint8_t)result);
+}
+
+bool bitwise_parity(uint8_t n) {
+    uint8_t count = 0;
+    while (n > 0) {
+        if (n & 0x01) {
+            count++;
+        }
+        n >>= 1;
+    }
+    return n & 0x01;
+}
+
+static inline bool has_ac(uint8_t a, uint8_t b) {
+    uint8_t result = a + b;
+    return (a ^ b ^ result) & 0x10;
+}
+
+static inline void cpu_handle_zspc_flags(CpuState *cpu, uint16_t result) {
+    if (result == 0x00) {
+        cpu_set_flag(cpu, F_ZERO, 1);
+    } else {
+        cpu_set_flag(cpu, F_ZERO, 0);
+    }
+
+    if ((result >> 7) == 0x01) {
+        cpu_set_flag(cpu, F_SIGN, 1);
+    } else {
+        cpu_set_flag(cpu, F_SIGN, 0);
+    }
+
+    if (bitwise_parity(result)) {
+        cpu_set_flag(cpu, F_PARITY, 1);
+    } else {
+        cpu_set_flag(cpu, F_PARITY, 0);
+    }
+
+    if ((result >> 8) == 0x01) {
+        cpu_set_flag(cpu, F_CARRY, 1);
+    } else {
+        cpu_set_flag(cpu, F_CARRY, 0);
+    }
+
 }
 
 int main() {
@@ -199,7 +269,7 @@ int main() {
     CpuState cpu = {0};
     cpu.mem = mem;
 
-    while(cpu.mem[cpu.pc] != HALT) {
+    while(cpu.mem[cpu.pc] != 0b01110110) {
         uint8_t opcode = cpu.mem[cpu.pc];
 
     }
