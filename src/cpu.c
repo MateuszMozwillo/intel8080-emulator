@@ -319,6 +319,7 @@ static inline void cpu_inx(CpuState *cpu) {
     uint16_t rp_val = cpu_get_reg_pair(cpu, rp);
     uint16_t result = rp_val + 1;
     cpu_set_reg_pair(cpu, rp, result & 0x0F, result & 0xF0);
+    cpu->pc += 1;
 }
 
 // DCX 00RP1011             (decrement register pair)
@@ -327,6 +328,7 @@ static inline void cpu_dcx(CpuState *cpu) {
     uint16_t rp_val = cpu_get_reg_pair(cpu, rp);
     uint16_t result = rp_val - 1;
     cpu_set_reg_pair(cpu, rp, result & 0x0F, result & 0xF0);
+    cpu->pc += 1;
 }
 
 
@@ -340,6 +342,7 @@ static inline void cpu_dad(CpuState *cpu) {
     cpu->carry_flag = (result & 0xFF00) == 0x0100;
 
     cpu_set_reg_pair(cpu, hl_val, result & 0x000F, result & 0x00F0);
+    cpu->pc += 1;
 }
 
 // DAA 00100111             (decimal adjust accumulator)
@@ -359,6 +362,7 @@ static inline void cpu_ana(CpuState *cpu) {
     cpu->carry_flag = 0;
 
     cpu_set_reg(cpu, REG_A, result);
+    cpu->pc += 1;
 }
 
 // ANI 11100110  db         (and immediate with a)
@@ -376,4 +380,115 @@ static inline void cpu_ani(CpuState *cpu) {
     cpu->carry_flag = 0;
 
     cpu_set_reg(cpu, REG_A, result);
+    cpu->pc += 2;
+}
+
+// ORA 10110SSS            (or reg with A)
+static inline void cpu_ora(CpuState *cpu) {
+
+    uint8_t a = cpu_read_reg(cpu, REG_A);
+    uint8_t b = cpu_read_reg(cpu, extract_src_reg(read_byte(cpu, 0)));
+
+    uint8_t result = a | b;
+
+    cpu->auxilary_flag = 0;
+    cpu->zero_flag = (uint8_t)result == 0x00;
+    cpu->sign_flag = ((uint8_t)result >> 7) == 0x01;
+    cpu->parity_flag = bitwise_parity((uint8_t)result);
+    cpu->carry_flag = 0;
+
+    cpu_set_reg(cpu, REG_A, result);
+    cpu->pc += 1;
+}
+
+// ORI 11110110 DB           (or immediate with A)
+static inline void cpu_ori(CpuState *cpu) {
+
+    uint8_t a = cpu_read_reg(cpu, REG_A);
+    uint8_t b = read_byte(cpu, 1);
+
+    uint8_t result = a | b;
+
+    cpu->auxilary_flag = 0;
+    cpu->zero_flag = (uint8_t)result == 0x00;
+    cpu->sign_flag = ((uint8_t)result >> 7) == 0x01;
+    cpu->parity_flag = bitwise_parity((uint8_t)result);
+    cpu->carry_flag = 0;
+
+    cpu_set_reg(cpu, REG_A, result);
+    cpu->pc += 2;
+}
+
+// XRA 10101SSS           (xor reg with A)
+static inline void cpu_xra(CpuState *cpu) {
+
+    uint8_t a = cpu_read_reg(cpu, REG_A);
+    uint8_t b = cpu_read_reg(cpu, extract_src_reg(read_byte(cpu, 0)));
+
+    uint8_t result = a ^ b;
+
+    cpu->auxilary_flag = 0;
+    cpu->zero_flag = (uint8_t)result == 0x00;
+    cpu->sign_flag = ((uint8_t)result >> 7) == 0x01;
+    cpu->parity_flag = bitwise_parity((uint8_t)result);
+    cpu->carry_flag = 0;
+
+    cpu_set_reg(cpu, REG_A, result);
+    cpu->pc += 1;
+}
+
+// XRI 11101110 DB           (xor immediate with A)
+static inline void cpu_xri(CpuState *cpu) {
+
+    uint8_t a = cpu_read_reg(cpu, REG_A);
+    uint8_t b = read_byte(cpu, 1);
+
+    uint8_t result = a ^ b;
+
+    cpu->auxilary_flag = 0;
+    cpu->zero_flag = (uint8_t)result == 0x00;
+    cpu->sign_flag = ((uint8_t)result >> 7) == 0x01;
+    cpu->parity_flag = bitwise_parity((uint8_t)result);
+    cpu->carry_flag = 0;
+
+    cpu_set_reg(cpu, REG_A, result);
+    cpu->pc += 2;
+}
+
+// CMP 10111SSS           (compare reg with A)
+static inline void cpu_cmp(CpuState *cpu) {
+    uint8_t a = cpu_read_reg(cpu, REG_A);
+    uint8_t b = cpu_read_reg(cpu, extract_src_reg(read_byte(cpu, 0)));
+
+    uint16_t result = a - b;
+
+    cpu->auxilary_flag = (a & 0x0F) < (b & 0x0F);
+    cpu->zero_flag = (uint8_t)result == 0x00;
+    cpu->sign_flag = ((uint8_t)result >> 7) == 0x01;
+    cpu->parity_flag = bitwise_parity((uint8_t)result);
+    cpu->carry_flag = (result & 0xFF00) != 0;
+
+    cpu->pc += 1;
+}
+
+// CPI 11111110 DB          (compare immediate with A)
+static inline void cpu_cpi(CpuState *cpu) {
+    uint8_t a = cpu_read_reg(cpu, REG_A);
+    uint8_t b = read_byte(cpu, 1);
+
+    uint16_t result = a - b;
+
+    cpu->auxilary_flag = (a & 0x0F) < (b & 0x0F);
+    cpu->zero_flag = (uint8_t)result == 0x00;
+    cpu->sign_flag = ((uint8_t)result >> 7) == 0x01;
+    cpu->parity_flag = bitwise_parity((uint8_t)result);
+    cpu->carry_flag = (result & 0xFF00) != 0;
+
+    cpu->pc += 2;
+}
+
+// RLC 00000111             (rotate A left)
+static inline void cpu_rlc(CpuState *cpu) {
+    uint8_t val = cpu_read_reg(cpu, REG_A);
+
 }
