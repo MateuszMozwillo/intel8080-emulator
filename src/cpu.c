@@ -345,6 +345,7 @@ static inline void cpu_dad(CpuState *cpu) {
     cpu->pc += 1;
 }
 
+// TODO: IMPLEMENT THIS
 // DAA 00100111             (decimal adjust accumulator)
 
 // ANA 10100SSS             (and register with A)
