@@ -1,5 +1,6 @@
 #include "cpu.h"
 #include <stdint.h>
+#include <sys/types.h>
 
 static inline Register extract_dst_reg(uint8_t opcode) {
     return (Register)((opcode >> 3) & 0x07);
@@ -138,7 +139,7 @@ static inline void cpu_stax(CpuState *cpu) {
 
 // XCHG 11101011         (exchanges hl with de)
 static inline void cpu_xchg(CpuState *cpu) {
-    uint8_t temp_l = cpu->l;
+    uint8_t temp_l = cpu-> l;
     uint8_t temp_h = cpu->h;
     cpu->l = cpu->e;
     cpu->h = cpu->d;
@@ -153,11 +154,11 @@ static inline void cpu_add(CpuState *cpu) {
     uint8_t b = cpu_read_reg(cpu, extract_src_reg(read_byte(cpu, 0)));
     uint16_t result = a + b;
 
+    cpu->auxilary_flag = ((a & 0x0F) + (b & 0x0F)) > 0x0F;
     cpu->zero_flag = (uint8_t)result == 0x00;
     cpu->sign_flag = ((uint8_t)result >> 7) == 0x01;
     cpu->parity_flag = bitwise_parity((uint8_t)result);
     cpu->carry_flag = result > 0xFF;
-    cpu->auxilary_flag = ((a ^ b ^ result) & 0x10) != 0;
 
     cpu_set_reg(cpu, REG_A, (uint8_t)result);
     cpu->pc += 1;
@@ -169,11 +170,11 @@ static inline void cpu_adi(CpuState *cpu) {
     uint8_t b = read_byte(cpu, 1);
     uint16_t result = a + b;
 
+    cpu->auxilary_flag = ((a & 0x0F) + (b & 0x0F)) > 0x0F;
     cpu->zero_flag = (uint8_t)result == 0x00;
     cpu->sign_flag = ((uint8_t)result >> 7) == 0x01;
     cpu->parity_flag = bitwise_parity((uint8_t)result);
     cpu->carry_flag = result > 0xFF;
-    cpu->auxilary_flag = ((a ^ b ^ result) & 0x10) != 0;
 
     cpu_set_reg(cpu, REG_A, (uint8_t)result);
     cpu->pc += 2;
@@ -186,11 +187,11 @@ static inline void cpu_adc(CpuState *cpu) {
 
     uint16_t result = a + b + cpu->carry_flag;
 
+    cpu->auxilary_flag = ((a & 0x0F) + (b & 0x0F)) + cpu->carry_flag > 0x0F;
     cpu->zero_flag = (uint8_t)result == 0x00;
     cpu->sign_flag = ((uint8_t)result >> 7) == 0x01;
     cpu->parity_flag = bitwise_parity((uint8_t)result);
     cpu->carry_flag = result > 0xFF;
-    cpu->auxilary_flag = ((a ^ b ^ result) & 0x10) != 0;
 
     cpu_set_reg(cpu, REG_A, (uint8_t)result);
     cpu->pc += 1;
@@ -203,11 +204,11 @@ static inline void cpu_aci(CpuState *cpu) {
 
     uint16_t result = a + b + cpu->carry_flag;
 
+    cpu->auxilary_flag = ((a & 0x0F) + (b & 0x0F)) + cpu->carry_flag > 0x0F;
     cpu->zero_flag = (uint8_t)result == 0x00;
     cpu->sign_flag = ((uint8_t)result >> 7) == 0x01;
     cpu->parity_flag = bitwise_parity((uint8_t)result);
     cpu->carry_flag = result > 0xFF;
-    cpu->auxilary_flag = ((a ^ b ^ result) & 0x10) != 0;
 
     cpu_set_reg(cpu, REG_A, (uint8_t)result);
     cpu->pc += 2;
@@ -220,11 +221,11 @@ static inline void cpu_sub(CpuState *cpu) {
 
     uint16_t result = a - b;
 
+    cpu->auxilary_flag = (a & 0x0F) < (b & 0x0F);
     cpu->zero_flag = (uint8_t)result == 0x00;
     cpu->sign_flag = ((uint8_t)result >> 7) == 0x01;
     cpu->parity_flag = bitwise_parity((uint8_t)result);
     cpu->carry_flag = (result & 0xFF00) != 0;
-    cpu->auxilary_flag = ((a ^ b ^ result) & 0x10) != 0;
 
     cpu_set_reg(cpu, REG_A, (uint8_t)result);
     cpu->pc += 1;
@@ -237,15 +238,16 @@ static inline void cpu_sui(CpuState *cpu) {
 
     uint16_t result = a - b;
 
+    cpu->auxilary_flag = (a & 0x0F) < (b & 0x0F);
     cpu->zero_flag = (uint8_t)result == 0x00;
     cpu->sign_flag = ((uint8_t)result >> 7) == 0x01;
     cpu->parity_flag = bitwise_parity((uint8_t)result);
     cpu->carry_flag = (result & 0xFF00) != 0;
-    cpu->auxilary_flag = ((a ^ b ^ result) & 0x10) != 0;
 
     cpu_set_reg(cpu, REG_A, (uint8_t)result);
     cpu->pc += 2;
 }
+
 
 // SBB 10011SSS             (subtract register from a with borrow)
 static inline void cpu_sbb(CpuState *cpu) {
@@ -254,11 +256,11 @@ static inline void cpu_sbb(CpuState *cpu) {
 
     uint16_t result = a - b - cpu->carry_flag;
 
+    cpu->auxilary_flag = (a & 0x0F) < ((b & 0x0F) + cpu->carry_flag);
     cpu->zero_flag = (uint8_t)result == 0x00;
     cpu->sign_flag = ((uint8_t)result >> 7) == 0x01;
     cpu->parity_flag = bitwise_parity((uint8_t)result);
     cpu->carry_flag = (result & 0xFF00) != 0;
-    cpu->auxilary_flag = ((a ^ b ^ result ^ (uint8_t)cpu->carry_flag) & 0x10) != 0;
 
     cpu_set_reg(cpu, REG_A, (uint8_t)result);
     cpu->pc += 1;
@@ -271,11 +273,11 @@ static inline void cpu_sbi(CpuState *cpu) {
 
     uint16_t result = a - b - cpu->carry_flag;
 
+    cpu->auxilary_flag = (a & 0x0F) < ((b & 0x0F) + cpu->carry_flag);
     cpu->zero_flag = (uint8_t)result == 0x00;
     cpu->sign_flag = ((uint8_t)result >> 7) == 0x01;
     cpu->parity_flag = bitwise_parity((uint8_t)result);
     cpu->carry_flag = (result & 0xFF00) != 0;
-    cpu->auxilary_flag = ((a ^ b ^ result ^ (uint8_t)cpu->carry_flag) & 0x10) != 0;
 
     cpu_set_reg(cpu, REG_A, (uint8_t)result);
     cpu->pc += 2;
@@ -287,10 +289,10 @@ static inline void cpu_inr(CpuState *cpu) {
     uint8_t reg_val = cpu_read_reg(cpu, dst_reg);
     uint16_t result = reg_val + 1;
 
+    cpu->auxilary_flag = (reg_val & 0x0F) == 0x0F;
     cpu->zero_flag = (uint8_t)result == 0x00;
     cpu->sign_flag = ((uint8_t)result >> 7) == 0x01;
     cpu->parity_flag = bitwise_parity((uint8_t)result);
-    cpu->auxilary_flag = ((reg_val ^ 1 ^ result) & 0x10) != 0;
 
     cpu_set_reg(cpu, dst_reg, (uint8_t)result);
     cpu->pc += 1;
@@ -302,11 +304,76 @@ static inline void cpu_dcr(CpuState *cpu) {
     uint8_t reg_val = cpu_read_reg(cpu, dst_reg);
     uint16_t result = reg_val - 1;
 
+    cpu->auxilary_flag = (reg_val & 0x0F) == 0x00;
     cpu->zero_flag = (uint8_t)result == 0x00;
     cpu->sign_flag = ((uint8_t)result >> 7) == 0x01;
     cpu->parity_flag = bitwise_parity((uint8_t)result);
-    cpu->auxilary_flag = (reg_val & 0x0F) != 0;
 
     cpu_set_reg(cpu, dst_reg, (uint8_t)result);
     cpu->pc += 1;
+}
+
+// INX 00RP0011             (increment register pair)
+static inline void cpu_inx(CpuState *cpu) {
+    RegisterPair rp = extract_reg_pair(read_byte(cpu, 0));
+    uint16_t rp_val = cpu_get_reg_pair(cpu, rp);
+    uint16_t result = rp_val + 1;
+    cpu_set_reg_pair(cpu, rp, result & 0x0F, result & 0xF0);
+}
+
+// DCX 00RP1011             (decrement register pair)
+static inline void cpu_dcx(CpuState *cpu) {
+    RegisterPair rp = extract_reg_pair(read_byte(cpu, 0));
+    uint16_t rp_val = cpu_get_reg_pair(cpu, rp);
+    uint16_t result = rp_val - 1;
+    cpu_set_reg_pair(cpu, rp, result & 0x0F, result & 0xF0);
+}
+
+
+// DAD 00RP1001             (Add register pair to HL (16 bit add))
+static inline void cpu_dad(CpuState *cpu) {
+    RegisterPair rp = extract_reg_pair(read_byte(cpu, 0));
+    uint16_t rp_val = cpu_get_reg_pair(cpu, rp);
+    uint16_t hl_val = cpu_get_reg_pair(cpu, RP_HL);
+
+    uint32_t result = rp_val + hl_val;
+    cpu->carry_flag = (result & 0xFF00) == 0x0100;
+
+    cpu_set_reg_pair(cpu, hl_val, result & 0x000F, result & 0x00F0);
+}
+
+// DAA 00100111             (decimal adjust accumulator)
+
+// ANA 10100SSS             (and register with A)
+static inline void cpu_ana(CpuState *cpu) {
+
+    uint8_t a = cpu_read_reg(cpu, REG_A);
+    uint8_t b = cpu_read_reg(cpu, extract_src_reg(read_byte(cpu, 0)));
+
+    uint8_t result = a & b;
+
+    cpu->auxilary_flag = ((a | b) & 0x08) != 0;
+    cpu->zero_flag = (uint8_t)result == 0x00;
+    cpu->sign_flag = ((uint8_t)result >> 7) == 0x01;
+    cpu->parity_flag = bitwise_parity((uint8_t)result);
+    cpu->carry_flag = 0;
+
+    cpu_set_reg(cpu, REG_A, result);
+}
+
+// ANI 11100110  db         (and immediate with a)
+static inline void cpu_ani(CpuState *cpu) {
+
+    uint8_t a = cpu_read_reg(cpu, REG_A);
+    uint8_t b = read_byte(cpu, 1);
+
+    uint8_t result = a & b;
+
+    cpu->auxilary_flag = ((a | b) & 0x08) != 0;
+    cpu->zero_flag = (uint8_t)result == 0x00;
+    cpu->sign_flag = ((uint8_t)result >> 7) == 0x01;
+    cpu->parity_flag = bitwise_parity((uint8_t)result);
+    cpu->carry_flag = 0;
+
+    cpu_set_reg(cpu, REG_A, result);
 }
