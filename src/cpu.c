@@ -467,7 +467,7 @@ static inline void cpu_cmp(CpuState *cpu) {
     cpu->zero_flag = (uint8_t)result == 0x00;
     cpu->sign_flag = ((uint8_t)result >> 7) == 0x01;
     cpu->parity_flag = bitwise_parity((uint8_t)result);
-    cpu->carry_flag = (result & 0xFF00) != 0;
+    cpu->carry_flag = (result & 0xFF00) == 0x0100;
 
     cpu->pc += 1;
 }
@@ -491,5 +491,60 @@ static inline void cpu_cpi(CpuState *cpu) {
 // RLC 00000111             (rotate A left)
 static inline void cpu_rlc(CpuState *cpu) {
     uint8_t val = cpu_read_reg(cpu, REG_A);
+    uint8_t msb = (val & 0x80) >> 7;
+    cpu->carry_flag = msb;
+    cpu_set_reg(cpu, REG_A, (val << 1) | msb);
+    cpu->pc += 1;
+}
 
+// RRC 00001111             (rotate A right)
+static inline void cpu_rrc(CpuState *cpu) {
+    uint8_t val = cpu_read_reg(cpu, REG_A);
+    uint8_t lsb = (val & 0x01) << 7;
+    cpu->carry_flag = (val & 0x01);
+    cpu_set_reg(cpu, REG_A, (val >> 1) | lsb);
+    cpu->pc += 1;
+}
+
+// RAL 000010111            (rotate A left through carry)
+static inline void cpu_ral(CpuState *cpu) {
+    uint8_t val = cpu_read_reg(cpu, REG_A);
+    uint8_t msb = (val & 0x80) >> 7;
+    bool current_carry = cpu->carry_flag;
+    cpu->carry_flag = msb;
+    cpu_set_reg(cpu, REG_A, (val << 1) | current_carry);
+    cpu->pc += 1;
+}
+
+// RAR 000011111             (rotate A right through carry)
+static inline void cpu_rar(CpuState *cpu) {
+    uint8_t val = cpu_read_reg(cpu, REG_A);
+    bool current_carry = cpu->carry_flag;
+    cpu->carry_flag = (val & 0x01);
+    cpu_set_reg(cpu, REG_A, (val >> 1) | (current_carry << 7));
+    cpu->pc += 1;
+}
+
+// CMA 00101111             (compliment A)
+static inline void cpu_cma(CpuState *cpu) {
+    uint8_t val = cpu_read_reg(cpu, REG_A);
+    cpu_set_reg(cpu, REG_A, ~val);
+    cpu->pc += 1;
+}
+
+// CMC 00111111             (compliment carry flag)
+static inline void cpu_cmc(CpuState* cpu) {
+    cpu->carry_flag = !cpu->carry_flag;
+    cpu->pc += 1;
+}
+
+// STC 00110111             (set carry flag)
+static inline void cpu_stc(CpuState* cpu) {
+    cpu->carry_flag = 1;
+    cpu->pc += 1;
+}
+
+// JMP 1100000011 lb hb     (unconditional jump)
+static inline void cpu_jmp(CpuState* cpu) {
+    cpu->pc = lb_hb_to_uint16(read_byte(cpu, 1), read_byte(cpu, 2));
 }
