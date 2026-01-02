@@ -358,13 +358,15 @@ static inline void cpu_dcx(CpuState *cpu) {
 // DAD 00RP1001             (Add register pair to HL (16 bit add))
 static inline void cpu_dad(CpuState *cpu) {
     RegisterPair rp = extract_reg_pair(read_byte(cpu, 0));
-    uint16_t rp_val = cpu_get_reg_pair(cpu, rp);
+    uint16_t val_to_add = cpu_get_reg_pair(cpu, rp);
+
     uint16_t hl_val = cpu_get_reg_pair(cpu, RP_HL);
 
-    uint32_t result = rp_val + hl_val;
-    cpu->carry_flag = (result & 0xFF00) == 0x0100;
+    uint32_t result = (uint32_t)hl_val + (uint32_t)val_to_add;
 
-    cpu_set_reg_pair(cpu, hl_val, result & 0x000F, result & 0x00F0);
+    cpu->carry_flag = (result > 0xFFFF);
+
+    cpu_set_reg_pair(cpu, RP_HL, (result & 0xFF), (result >> 8) & 0xFF);
     cpu->pc += 1;
 }
 
@@ -754,4 +756,47 @@ static inline void cpu_hlt(CpuState *cpu) {
 // NOP 00000000              (No operation)
 static inline void cpu_nop(CpuState *cpu) {
     cpu->pc += 1;
+}
+
+// returns number of cycles consumed by instruction
+static inline int cpu_step(CpuState *cpu) {
+    switch (read_byte(cpu, 0)) {
+        case 0x00: case 0x10: case 0x20: case 0x30:
+        case 0x08: case 0x18: case 0x28: case 0x38:
+            cpu_nop(cpu); return 4;
+
+        case 0x01: case 0x11: case 0x21: case 0x31:
+            cpu_lxi(cpu); return 10;
+
+        case 0x02: case 0x12:
+            cpu_stax(cpu); return 7;
+
+        case 0x03: case 0x13: case 0x23: case 0x33:
+            cpu_inx(cpu); return 5;
+
+        case 0x04: case 0x14: case 0x24:
+            cpu_inr(cpu); return 5;
+
+        case 0x34:
+            cpu_inr(cpu); return 10;
+
+        case 0x05: case 0x15: case 0x25:
+            cpu_dcr(cpu); return 5;
+
+        case 0x35:
+            cpu_dcr(cpu); return 10;
+
+        case 0x06: case 0x16: case 0x26:
+        case 0x0E: case 0x1E: case 0x2E: case 0x3E:
+            cpu_mvi(cpu); return 7;
+
+        case 0x36:
+            cpu_mvi(cpu); return 10;
+
+        case 0x07:
+            cpu_rlc(cpu); return 4;
+
+        case 0x09: case 0x19: case 0x29: case 0x39:
+            cpu_dad(cpu); return 10;
+    }
 }
