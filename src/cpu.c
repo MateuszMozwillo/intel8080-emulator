@@ -368,8 +368,32 @@ static inline void cpu_dad(CpuState *cpu) {
     cpu->pc += 1;
 }
 
-// TODO: IMPLEMENT THIS
-// DAA 00100111             (decimal adjust accumulator)
+// DAA 00100111             (Decimal Adjust Accumulator)
+static inline void cpu_daa(CpuState *cpu) {
+    bool cy = cpu->carry_flag;
+    uint8_t correction = 0;
+    uint8_t lsb = cpu->a & 0x0F;
+    uint8_t msb = cpu->a >> 4;
+
+    if (lsb > 9 || cpu->auxilary_flag) {
+        correction += 0x06;
+    }
+
+    if (msb > 9 || cy || (msb >= 9 && lsb > 9)) {
+        correction += 0x60;
+        cy = true;
+    }
+
+    uint16_t result = (uint16_t)cpu->a + correction;
+
+    cpu->auxilary_flag = ((cpu->a & 0x0F) + (correction & 0x0F)) > 0x0F;
+    cpu->carry_flag = cy;
+    cpu->zero_flag = (uint8_t)result == 0x00;
+    cpu->sign_flag = ((uint8_t)result & 0x80) != 0;
+    cpu->parity_flag = bitwise_parity((uint8_t)result);
+    cpu->a = (uint8_t)result;
+    cpu->pc += 1;
+}
 
 // ANA 10100SSS             (and register with A)
 static inline void cpu_ana(CpuState *cpu) {
@@ -687,6 +711,37 @@ static inline void cpu_xthl(CpuState *cpu) {
 // SPHL 11111001             (Set SP to content of HL)
 static inline void cpu_sphl(CpuState *cpu) {
     cpu->sp = cpu_get_reg_pair(cpu, RP_HL);
+    cpu->pc += 1;
+}
+
+// IN 11011011 pa            (read input port into A)
+static inline void cpu_in(CpuState *cpu) {
+    uint8_t port = read_byte(cpu, 1);
+
+    // TODO: do something with this
+
+    cpu->pc += 2;
+}
+
+// OUT 11010011 pa           (Write A to output port)
+static inline void cpu_out(CpuState *cpu) {
+    uint8_t port = read_byte(cpu, 1);
+    uint8_t data = cpu->a;
+
+    // TODO: do something with this
+
+    cpu->pc += 2;
+}
+
+// EI 11111011               (Enable interrupts)
+static inline void cpu_ei(CpuState *cpu) {
+    cpu->interruptible = true;
+    cpu->pc += 1;
+}
+
+// DI 11110011               (Disable interrupts)
+static inline void cpu_di(CpuState *cpu) {
+    cpu->interruptible = false;
     cpu->pc += 1;
 }
 

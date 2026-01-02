@@ -46,6 +46,7 @@ typedef struct {
     bool sign_flag;
 
     bool halted;
+    bool interruptible;
 
     uint64_t cycle;
 
