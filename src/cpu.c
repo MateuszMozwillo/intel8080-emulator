@@ -14,6 +14,10 @@ static inline RegisterPair extract_reg_pair(uint8_t opcode) {
     return (RegisterPair)((opcode >> 4) & 0x03);
 }
 
+static inline ConditionCode extract_condition_code(uint8_t opcode) {
+    return (ConditionCode)((opcode >> 3) & 0x07);
+}
+
 static inline uint16_t cpu_get_hl(CpuState *cpu) {
     return (((uint16_t)cpu->h << 8) | cpu->l);
 }
@@ -63,6 +67,19 @@ static inline void cpu_set_reg(CpuState *cpu, Register r, uint8_t val) {
         case REG_H: cpu->h = val; break;
         case REG_L: cpu->l = val; break;
         case REG_A: cpu->a = val; break;
+    }
+}
+
+static inline bool check_condition(CpuState *cpu, ConditionCode condition_code) {
+    switch(condition_code) {
+        case CC_NZ: return !cpu->zero_flag;
+        case CC_Z:  return cpu->zero_flag;
+        case CC_NC: return !cpu->carry_flag;
+        case CC_C:  return cpu->carry_flag;
+        case CC_PO: return !cpu->parity_flag;
+        case CC_PE: return cpu->parity_flag;
+        case CC_P:  return !cpu->sign_flag;
+        case CC_M:  return cpu->sign_flag;
     }
 }
 
@@ -525,26 +542,82 @@ static inline void cpu_rar(CpuState *cpu) {
     cpu->pc += 1;
 }
 
-// CMA 00101111             (compliment A)
+// CMA 00101111              (compliment A)
 static inline void cpu_cma(CpuState *cpu) {
     uint8_t val = cpu_read_reg(cpu, REG_A);
     cpu_set_reg(cpu, REG_A, ~val);
     cpu->pc += 1;
 }
 
-// CMC 00111111             (compliment carry flag)
-static inline void cpu_cmc(CpuState* cpu) {
+// CMC 00111111              (compliment carry flag)
+static inline void cpu_cmc(CpuState *cpu) {
     cpu->carry_flag = !cpu->carry_flag;
     cpu->pc += 1;
 }
 
-// STC 00110111             (set carry flag)
-static inline void cpu_stc(CpuState* cpu) {
+// STC 00110111              (set carry flag)
+static inline void cpu_stc(CpuState *cpu) {
     cpu->carry_flag = 1;
     cpu->pc += 1;
 }
 
-// JMP 1100000011 lb hb     (unconditional jump)
-static inline void cpu_jmp(CpuState* cpu) {
+// JMP 11000011 lb hb        (unconditional jump)
+static inline void cpu_jmp(CpuState *cpu) {
     cpu->pc = lb_hb_to_uint16(read_byte(cpu, 1), read_byte(cpu, 2));
+}
+
+// Jccc 11CCC010 lb hb       (conditional jump)
+static inline void cpu_jccc(CpuState *cpu) {
+    if (check_condition(cpu, extract_condition_code(read_byte(cpu, 0)))) {
+        cpu_jmp(cpu);
+    } else {
+        cpu->pc += 3;
+    }
+}
+
+// CALL 11001101 lb hb       (unconditional subrutine call)
+static inline void cpu_call(CpuState *cpu) {
+    uint16_t return_addr = cpu->pc + 3;
+    cpu->mem[cpu->sp - 1] = (uint8_t)(return_addr >> 8);
+    cpu->mem[cpu->sp - 2] = (uint8_t)return_addr;
+    cpu->sp -= 2;
+    cpu_jmp(cpu);
+}
+
+// Cccc 11CCC100 lb hb       (conditional subrutine call)
+static inline void cpu_Cccc(CpuState *cpu) {
+    if (check_condition(cpu, extract_condition_code(read_byte(cpu, 0)))) {
+        cpu_call(cpu);
+    } else {
+        cpu->pc += 3;
+    }
+}
+
+// RET 11001001              (unconditional return from subrutine)
+static inline void cpu_ret(CpuState *cpu) {
+    uint8_t lo = cpu->mem[cpu->sp];
+    uint8_t hi = cpu->mem[cpu->sp + 1];
+    cpu->pc = lb_hb_to_uint16(lo, hi);
+    cpu->sp += 2;
+}
+
+// Rccc 11CCC000             (Conditional return from subrutine)
+static inline void cpu_Rccc(CpuState *cpu) {
+    if (check_condition(cpu, extract_condition_code(read_byte(cpu, 0)))) {
+        cpu_ret(cpu);
+    } else {
+        cpu->pc += 1;
+    }
+}
+
+// RST 11NNN111              (Restart / Call to address N * 8)
+static inline void cpu_rst(CpuState *cpu) {
+    uint16_t return_addr = cpu->pc + 1;
+
+    cpu->mem[cpu->sp - 1] = (uint8_t)(return_addr >> 8);
+    cpu->mem[cpu->sp - 2] = (uint8_t)(return_addr);
+    cpu->sp -= 2;
+
+    uint8_t opcode = read_byte(cpu, 0);
+    cpu->pc = (uint16_t)(opcode & 0x38);
 }
