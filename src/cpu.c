@@ -83,6 +83,12 @@ static inline bool check_condition(CpuState *cpu, ConditionCode condition_code) 
     }
 }
 
+static inline void cpu_stack_push(CpuState *cpu, uint16_t val) {
+    cpu->mem[cpu->sp - 1] = (uint8_t)(val >> 8);
+    cpu->mem[cpu->sp - 2] = (uint8_t)(val);
+    cpu->sp -= 2;
+}
+
 static inline bool bitwise_parity(uint8_t n) {
     return __builtin_parity(n);
 }
@@ -578,9 +584,7 @@ static inline void cpu_jccc(CpuState *cpu) {
 // CALL 11001101 lb hb       (unconditional subrutine call)
 static inline void cpu_call(CpuState *cpu) {
     uint16_t return_addr = cpu->pc + 3;
-    cpu->mem[cpu->sp - 1] = (uint8_t)(return_addr >> 8);
-    cpu->mem[cpu->sp - 2] = (uint8_t)return_addr;
-    cpu->sp -= 2;
+    cpu_stack_push(cpu, return_addr);
     cpu_jmp(cpu);
 }
 
@@ -613,11 +617,86 @@ static inline void cpu_Rccc(CpuState *cpu) {
 // RST 11NNN111              (Restart / Call to address N * 8)
 static inline void cpu_rst(CpuState *cpu) {
     uint16_t return_addr = cpu->pc + 1;
+    cpu_stack_push(cpu, return_addr);
+    cpu->pc = (uint16_t)(read_byte(cpu, 0) & 0x38);
+}
 
-    cpu->mem[cpu->sp - 1] = (uint8_t)(return_addr >> 8);
-    cpu->mem[cpu->sp - 2] = (uint8_t)(return_addr);
-    cpu->sp -= 2;
+// PCHL 11101001             (Jump to address in HL)
+static inline void cpu_pchl(CpuState *cpu) {
+    cpu->pc = cpu_get_reg_pair(cpu, RP_HL);
+}
 
-    uint8_t opcode = read_byte(cpu, 0);
-    cpu->pc = (uint16_t)(opcode & 0x38);
+// PUSH 11RP0101             (push register pair on the stack)
+static inline void cpu_push(CpuState *cpu) {
+    RegisterPair rp = extract_reg_pair(read_byte(cpu, 0));
+    uint16_t val_to_push;
+    if (rp == RP_SP) {
+        uint8_t flags = 0x02;
+        if (cpu->sign_flag)     flags |= 0x80;
+        if (cpu->zero_flag)     flags |= 0x40;
+        if (cpu->auxilary_flag) flags |= 0x10;
+        if (cpu->parity_flag)   flags |= 0x04;
+        if (cpu->carry_flag)    flags |= 0x01;
+        val_to_push = ((uint16_t)cpu->a << 8) | flags;
+    } else {
+        val_to_push = cpu_get_reg_pair(cpu, rp);
+    }
+    cpu_stack_push(cpu, val_to_push);
+    cpu->pc += 1;
+}
+
+// POP 11RP0001          (Pop register pair from stack)
+static inline void cpu_pop(CpuState *cpu) {
+    RegisterPair rp = extract_reg_pair(read_byte(cpu, 0));
+
+    uint8_t low_byte = cpu->mem[cpu->sp];
+    uint8_t high_byte = cpu->mem[cpu->sp + 1];
+
+    cpu->sp += 2;
+
+    if (rp == RP_SP) {
+
+        cpu->a = high_byte;
+
+        cpu->sign_flag = (low_byte & 0x80) != 0;
+        cpu->zero_flag = (low_byte & 0x40) != 0;
+        cpu->auxilary_flag = (low_byte & 0x10) != 0;
+        cpu->parity_flag = (low_byte & 0x04) != 0;
+        cpu->carry_flag = (low_byte & 0x01) != 0;
+    } else {
+        cpu_set_reg_pair(cpu, rp, low_byte, high_byte);
+    }
+
+    cpu->pc += 1;
+}
+
+// XTHL 11100011             (Exchange top of stack with HL)
+static inline void cpu_xthl(CpuState *cpu) {
+    uint8_t stack_lo = cpu->mem[cpu->sp];
+    uint8_t stack_hi = cpu->mem[cpu->sp + 1];
+
+    cpu->mem[cpu->sp] = cpu->l;
+    cpu->mem[cpu->sp + 1] = cpu->h;
+
+    cpu->l = stack_lo;
+    cpu->h = stack_hi;
+
+    cpu->pc += 1;
+}
+
+// SPHL 11111001             (Set SP to content of HL)
+static inline void cpu_sphl(CpuState *cpu) {
+    cpu->sp = cpu_get_reg_pair(cpu, RP_HL);
+    cpu->pc += 1;
+}
+
+// HLT 01110110              (Halt processor)
+static inline void cpu_hlt(CpuState *cpu) {
+    cpu->halted = true;
+    cpu->pc += 1;
+}
+
+// NOP 00000000              (No operation)
+static inline void cpu_nop(CpuState *cpu) {
+    cpu->pc += 1;
 }

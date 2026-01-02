@@ -45,6 +45,8 @@ typedef struct {
     bool zero_flag;
     bool sign_flag;
 
+    bool halted;
+
     uint64_t cycle;
 
     uint8_t* mem;
