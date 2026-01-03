@@ -103,6 +103,12 @@ static inline bool bitwise_parity(uint8_t n) {
     #endif
 }
 
+static inline void handle_zsp_flags(CpuState *cpu, uint16_t result) {
+    cpu->zero_flag = (uint8_t)result == 0x00;
+    cpu->sign_flag = ((uint8_t)result >> 7) == 0x01;
+    cpu->parity_flag = bitwise_parity((uint8_t)result);
+}
+
 // returns byte from memory
 // location at program counter + offset
 static inline uint8_t read_byte(CpuState *cpu, uint8_t pc_offset) {
@@ -180,12 +186,6 @@ static inline void cpu_xchg(CpuState *cpu) {
     cpu->e = temp_l;
     cpu->d = temp_h;
     cpu->pc += 1;
-}
-
-static inline void handle_zsp_flags(CpuState *cpu, uint16_t result) {
-    cpu->zero_flag = (uint8_t)result == 0x00;
-    cpu->sign_flag = ((uint8_t)result >> 7) == 0x01;
-    cpu->parity_flag = bitwise_parity((uint8_t)result);
 }
 
 // ADD 10000SSS          (add register to A)
