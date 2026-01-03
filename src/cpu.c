@@ -614,12 +614,14 @@ static inline void cpu_call(CpuState *cpu) {
     cpu_jmp(cpu);
 }
 
-// Cccc 11CCC100 lb hb       (conditional subrutine call)
-static inline void cpu_Cccc(CpuState *cpu) {
+// Cccc 11CCC100 lb hb       (conditional subrutine call) returns 1 if call happened and 0 otherwise
+static inline bool cpu_Cccc(CpuState *cpu) {
     if (check_condition(cpu, extract_condition_code(read_byte(cpu, 0)))) {
         cpu_call(cpu);
+        return 1;
     } else {
         cpu->pc += 3;
+        return 0;
     }
 }
 
@@ -631,12 +633,14 @@ static inline void cpu_ret(CpuState *cpu) {
     cpu->sp += 2;
 }
 
-// Rccc 11CCC000             (Conditional return from subrutine)
-static inline void cpu_Rccc(CpuState *cpu) {
+// Rccc 11CCC000             (Conditional return from subrutine) returns 1 if return happened and 0 otherwise
+static inline bool cpu_Rccc(CpuState *cpu) {
     if (check_condition(cpu, extract_condition_code(read_byte(cpu, 0)))) {
         cpu_ret(cpu);
+        return 1;
     } else {
         cpu->pc += 1;
+        return 0;
     }
 }
 
@@ -798,5 +802,213 @@ static inline int cpu_step(CpuState *cpu) {
 
         case 0x09: case 0x19: case 0x29: case 0x39:
             cpu_dad(cpu); return 10;
+
+        case 0x0A: case 0x1A:
+            cpu_ldax(cpu); return 7;
+
+        case 0x0B: case 0x1B: case 0x2B: case 0x3B:
+            cpu_dcx(cpu); return 5;
+
+        case 0x0C: case 0x1C: case 0x2C: case 0x3C:
+            cpu_inr(cpu); return 5;
+
+        case 0x0D: case 0x1D: case 0x2D: case 0x3D:
+            cpu_dcr(cpu); return 5;
+
+        case 0x0F:
+            cpu_rrc(cpu); return 4;
+
+        case 0x22:
+            cpu_shld(cpu); return 16;
+
+        case 0x32:
+            cpu_sta(cpu); return 13;
+
+        case 0x17:
+            cpu_ral(cpu); return 4;
+
+        case 0x27:
+            cpu_daa(cpu); return 4;
+
+        case 0x37:
+            cpu_stc(cpu); return 4;
+
+        case 0x2A:
+            cpu_lhld(cpu); return 16;
+
+        case 0x3A:
+            cpu_lda(cpu); return 13;
+
+        case 0x1F:
+            cpu_rar(cpu); return 4;
+
+        case 0x2F:
+            cpu_cma(cpu); return 4;
+
+        case 0x3F:
+            cpu_cmc(cpu); return 4;
+
+        case 0x40: case 0x50: case 0x60:
+        case 0x41: case 0x51: case 0x61:
+        case 0x42: case 0x52: case 0x62:
+        case 0x43: case 0x53: case 0x63:
+        case 0x44: case 0x54: case 0x64:
+        case 0x45: case 0x55: case 0x65:
+        case 0x47: case 0x57: case 0x67:
+        case 0x48: case 0x58: case 0x68: case 0x78:
+        case 0x49: case 0x59: case 0x69: case 0x79:
+        case 0x4A: case 0x5A: case 0x6A: case 0x7A:
+        case 0x4B: case 0x5B: case 0x6B: case 0x7B:
+        case 0x4C: case 0x5C: case 0x6C: case 0x7C:
+        case 0x4D: case 0x5D: case 0x6D: case 0x7D:
+        case 0x4F: case 0x5F: case 0x6F: case 0x7F:
+            cpu_mov(cpu); return 5;
+
+        case 0x46: case 0x56: case 0x66:
+        case 0x4E: case 0x5E: case 0x6E:
+        case 0x70: case 0x71: case 0x72: case 0x73:
+        case 0x74: case 0x75: case 0x77: case 0x7E:
+            cpu_mov(cpu); return 7;
+
+        case 0x76:
+            cpu_hlt(cpu); return 7;
+
+        case 0x80: case 0x81: case 0x82: case 0x83:
+        case 0x84: case 0x85: case 0x87:
+            cpu_add(cpu); return 4;
+        case 0x86:
+            cpu_add(cpu); return 7;
+
+        case 0x88: case 0x89: case 0x8A: case 0x8B:
+        case 0x8C: case 0x8D: case 0x8F:
+            cpu_adc(cpu); return 4;
+        case 0x8E:
+            cpu_adc(cpu); return 7;
+
+        case 0x90: case 0x91: case 0x92: case 0x93:
+        case 0x94: case 0x95: case 0x97:
+            cpu_sub(cpu); return 4;
+        case 0x96:
+            cpu_sub(cpu); return 7;
+
+        case 0x98: case 0x99: case 0x9A: case 0x9B:
+        case 0x9C: case 0x9D: case 0x9F:
+            cpu_sbb(cpu); return 4;
+        case 0x9E:
+            cpu_sbb(cpu); return 7;
+
+        case 0xA0: case 0xA1: case 0xA2: case 0xA3:
+        case 0xA4: case 0xA5: case 0xA7:
+            cpu_ana(cpu); return 4;
+        case 0xA6:
+            cpu_ana(cpu); return 7;
+
+        case 0xA8: case 0xA9: case 0xAA: case 0xAB:
+        case 0xAC: case 0xAD: case 0xAF:
+            cpu_xra(cpu); return 4;
+        case 0xAE:
+            cpu_xra(cpu); return 7;
+
+        case 0xB0: case 0xB1: case 0xB2: case 0xB3:
+        case 0xB4: case 0xB5: case 0xB7:
+            cpu_ora(cpu); return 4;
+        case 0xB6:
+            cpu_ora(cpu); return 7;
+
+        case 0xB8: case 0xB9: case 0xBA: case 0xBB:
+        case 0xBC: case 0xBD: case 0xBF:
+            cpu_cmp(cpu); return 4;
+        case 0xBE:
+            cpu_cmp(cpu); return 7;
+
+        case 0xC0: case 0xD0: case 0xE0: case 0xF0:
+        case 0xC8: case 0xD8: case 0xE8: case 0xF8: {
+            if (cpu_Rccc(cpu)) {
+                return 11;
+            } else {
+                return 5;
+            }
+        }
+
+        case 0xC1: case 0xD1: case 0xE1: case 0xF1:
+            cpu_pop(cpu); return 10;
+
+        case 0xC2: case 0xD2: case 0xE2: case 0xF2:
+        case 0xCA: case 0xDA: case 0xEA: case 0xFA:
+            cpu_jccc(cpu); return 10;
+
+        case 0xC3: case 0xCB:
+            cpu_jmp(cpu); return 10;
+
+        case 0xC4: case 0xD4: case 0xE4: case 0xF4:
+        case 0xCC: case 0xDC: case 0xEC: case 0xFC: {
+            if (cpu_Cccc(cpu)) {
+                return 17;
+            } else {
+                return 11;
+            }
+        }
+
+        case 0xC5: case 0xD5: case 0xE5: case 0xF5:
+            cpu_push(cpu); return 11;
+
+        case 0xC6:
+            cpu_adi(cpu); return 7;
+
+        case 0xC7: case 0xD7: case 0xE7: case 0xF7:
+        case 0xCF: case 0xDF: case 0xEF: case 0xFF:
+            cpu_rst(cpu); return 11;
+
+        case 0xC9: case 0xD9:
+            cpu_ret(cpu); return 10;
+
+        case 0xCD: case 0xDD: case 0xED: case 0xFD:
+            cpu_call(cpu); return 17;
+
+        case 0xCE:
+            cpu_aci(cpu); return 7;
+
+        case 0xD3:
+            cpu_out(cpu); return 10;
+
+        case 0xE3:
+            cpu_xthl(cpu); return 18;
+
+        case 0xF3:
+            cpu_di(cpu); return 4;
+
+        case 0xD6:
+            cpu_sui(cpu); return 7;
+
+        case 0xE6:
+            cpu_ani(cpu); return 7;
+
+        case 0xF6:
+            cpu_ori(cpu); return 7;
+
+        case 0xE9:
+            cpu_pchl(cpu); return 5;
+
+        case 0xF9:
+            cpu_sphl(cpu); return 5;
+
+        case 0xDB:
+            cpu_in(cpu); return 10;
+
+        case 0xEB:
+            cpu_xchg(cpu); return 5;
+
+        case 0xFB:
+            cpu_ei(cpu); return 4;
+
+        case 0xDE:
+            cpu_sbi(cpu); return 7;
+
+        case 0xEE:
+            cpu_xri(cpu); return 7;
+
+        case 0xFE:
+            cpu_cpi(cpu); return 7;
     }
+    return -1;
 }
