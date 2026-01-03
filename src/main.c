@@ -14,11 +14,13 @@ int main() {
         0x76, // HALT
     };
 
+
+
     CpuState cpu = {0};
     cpu.mem = mem;
 
     while(!cpu.halted) {
         cpu.cycle += cpu_step(&cpu);
     }
-    printf("%d\n", mem[1]);
+    printf("%d %d\n", mem[1], cpu.parity_flag);
 }

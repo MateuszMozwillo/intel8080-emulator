@@ -42,6 +42,7 @@ static inline uint16_t cpu_get_reg_pair(CpuState *cpu, RegisterPair rp) {
         case RP_HL: return lb_hb_to_uint16(cpu->l, cpu->h);
         case RP_SP: return cpu->sp;
     }
+    return -1;
 }
 
 static inline uint8_t cpu_read_reg(CpuState *cpu, Register r) {
@@ -55,6 +56,7 @@ static inline uint8_t cpu_read_reg(CpuState *cpu, Register r) {
         case REG_L: return cpu->l;
         case REG_A: return cpu->a;
     }
+    return -1;
 }
 
 static inline void cpu_set_reg(CpuState *cpu, Register r, uint8_t val) {
@@ -81,6 +83,7 @@ static inline bool check_condition(CpuState *cpu, ConditionCode condition_code) 
         case CC_P:  return !cpu->sign_flag;
         case CC_M:  return cpu->sign_flag;
     }
+    return 0;
 }
 
 static inline void cpu_stack_push(CpuState *cpu, uint16_t val) {
@@ -90,7 +93,16 @@ static inline void cpu_stack_push(CpuState *cpu, uint16_t val) {
 }
 
 static inline bool bitwise_parity(uint8_t n) {
-    return __builtin_parity(n);
+    #ifdef __GNUC__
+        return !__builtin_parity(n);
+    #elif defined(__clang__)
+        return !__builtin_parity(n);
+    #else
+        n ^= n >> 4;
+        n ^= n >> 2;
+        n ^= n >> 1;
+        return !(n & 1);
+    #endif
 }
 
 // returns byte from memory location at program counter + offset
