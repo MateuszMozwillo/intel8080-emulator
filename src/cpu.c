@@ -102,8 +102,9 @@ static inline bool bitwise_parity(uint8_t n) {
         return !(n & 1);
     #endif
 }
+
 // returns byte from memory
-//  location at program counter + offset
+// location at program counter + offset
 static inline uint8_t read_byte(CpuState *cpu, uint8_t pc_offset) {
     return cpu->mem[cpu->pc+pc_offset];
 }
