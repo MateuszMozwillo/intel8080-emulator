@@ -182,6 +182,12 @@ static inline void cpu_xchg(CpuState *cpu) {
     cpu->pc += 1;
 }
 
+static inline void handle_zsp_flags(CpuState *cpu, uint16_t result) {
+    cpu->zero_flag = (uint8_t)result == 0x00;
+    cpu->sign_flag = ((uint8_t)result >> 7) == 0x01;
+    cpu->parity_flag = bitwise_parity((uint8_t)result);
+}
+
 // ADD 10000SSS          (add register to A)
 static inline void cpu_add(CpuState *cpu) {
     uint8_t a = cpu_read_reg(cpu, REG_A);
@@ -189,9 +195,7 @@ static inline void cpu_add(CpuState *cpu) {
     uint16_t result = a + b;
 
     cpu->auxilary_flag = ((a & 0x0F) + (b & 0x0F)) > 0x0F;
-    cpu->zero_flag = (uint8_t)result == 0x00;
-    cpu->sign_flag = ((uint8_t)result >> 7) == 0x01;
-    cpu->parity_flag = bitwise_parity((uint8_t)result);
+    handle_zsp_flags(cpu, result);
     cpu->carry_flag = result > 0xFF;
 
     cpu_set_reg(cpu, REG_A, (uint8_t)result);
@@ -205,9 +209,7 @@ static inline void cpu_adi(CpuState *cpu) {
     uint16_t result = a + b;
 
     cpu->auxilary_flag = ((a & 0x0F) + (b & 0x0F)) > 0x0F;
-    cpu->zero_flag = (uint8_t)result == 0x00;
-    cpu->sign_flag = ((uint8_t)result >> 7) == 0x01;
-    cpu->parity_flag = bitwise_parity((uint8_t)result);
+    handle_zsp_flags(cpu, result);
     cpu->carry_flag = result > 0xFF;
 
     cpu_set_reg(cpu, REG_A, (uint8_t)result);
@@ -222,9 +224,7 @@ static inline void cpu_adc(CpuState *cpu) {
     uint16_t result = a + b + cpu->carry_flag;
 
     cpu->auxilary_flag = ((a & 0x0F) + (b & 0x0F)) + cpu->carry_flag > 0x0F;
-    cpu->zero_flag = (uint8_t)result == 0x00;
-    cpu->sign_flag = ((uint8_t)result >> 7) == 0x01;
-    cpu->parity_flag = bitwise_parity((uint8_t)result);
+    handle_zsp_flags(cpu, result);
     cpu->carry_flag = result > 0xFF;
 
     cpu_set_reg(cpu, REG_A, (uint8_t)result);
@@ -239,9 +239,7 @@ static inline void cpu_aci(CpuState *cpu) {
     uint16_t result = a + b + cpu->carry_flag;
 
     cpu->auxilary_flag = ((a & 0x0F) + (b & 0x0F)) + cpu->carry_flag > 0x0F;
-    cpu->zero_flag = (uint8_t)result == 0x00;
-    cpu->sign_flag = ((uint8_t)result >> 7) == 0x01;
-    cpu->parity_flag = bitwise_parity((uint8_t)result);
+    handle_zsp_flags(cpu, result);
     cpu->carry_flag = result > 0xFF;
 
     cpu_set_reg(cpu, REG_A, (uint8_t)result);
@@ -256,9 +254,7 @@ static inline void cpu_sub(CpuState *cpu) {
     uint16_t result = a - b;
 
     cpu->auxilary_flag = (a & 0x0F) < (b & 0x0F);
-    cpu->zero_flag = (uint8_t)result == 0x00;
-    cpu->sign_flag = ((uint8_t)result >> 7) == 0x01;
-    cpu->parity_flag = bitwise_parity((uint8_t)result);
+    handle_zsp_flags(cpu, result);
     cpu->carry_flag = (result & 0xFF00) != 0;
 
     cpu_set_reg(cpu, REG_A, (uint8_t)result);
@@ -273,9 +269,7 @@ static inline void cpu_sui(CpuState *cpu) {
     uint16_t result = a - b;
 
     cpu->auxilary_flag = (a & 0x0F) < (b & 0x0F);
-    cpu->zero_flag = (uint8_t)result == 0x00;
-    cpu->sign_flag = ((uint8_t)result >> 7) == 0x01;
-    cpu->parity_flag = bitwise_parity((uint8_t)result);
+    handle_zsp_flags(cpu, result);
     cpu->carry_flag = (result & 0xFF00) != 0;
 
     cpu_set_reg(cpu, REG_A, (uint8_t)result);
@@ -291,9 +285,7 @@ static inline void cpu_sbb(CpuState *cpu) {
     uint16_t result = a - b - cpu->carry_flag;
 
     cpu->auxilary_flag = (a & 0x0F) < ((b & 0x0F) + cpu->carry_flag);
-    cpu->zero_flag = (uint8_t)result == 0x00;
-    cpu->sign_flag = ((uint8_t)result >> 7) == 0x01;
-    cpu->parity_flag = bitwise_parity((uint8_t)result);
+    handle_zsp_flags(cpu, result);
     cpu->carry_flag = (result & 0xFF00) != 0;
 
     cpu_set_reg(cpu, REG_A, (uint8_t)result);
@@ -308,9 +300,7 @@ static inline void cpu_sbi(CpuState *cpu) {
     uint16_t result = a - b - cpu->carry_flag;
 
     cpu->auxilary_flag = (a & 0x0F) < ((b & 0x0F) + cpu->carry_flag);
-    cpu->zero_flag = (uint8_t)result == 0x00;
-    cpu->sign_flag = ((uint8_t)result >> 7) == 0x01;
-    cpu->parity_flag = bitwise_parity((uint8_t)result);
+    handle_zsp_flags(cpu, result);
     cpu->carry_flag = (result & 0xFF00) != 0;
 
     cpu_set_reg(cpu, REG_A, (uint8_t)result);
@@ -324,9 +314,7 @@ static inline void cpu_inr(CpuState *cpu) {
     uint16_t result = reg_val + 1;
 
     cpu->auxilary_flag = (reg_val & 0x0F) == 0x0F;
-    cpu->zero_flag = (uint8_t)result == 0x00;
-    cpu->sign_flag = ((uint8_t)result >> 7) == 0x01;
-    cpu->parity_flag = bitwise_parity((uint8_t)result);
+    handle_zsp_flags(cpu, result);
 
     cpu_set_reg(cpu, dst_reg, (uint8_t)result);
     cpu->pc += 1;
@@ -339,9 +327,7 @@ static inline void cpu_dcr(CpuState *cpu) {
     uint16_t result = reg_val - 1;
 
     cpu->auxilary_flag = (reg_val & 0x0F) == 0x00;
-    cpu->zero_flag = (uint8_t)result == 0x00;
-    cpu->sign_flag = ((uint8_t)result >> 7) == 0x01;
-    cpu->parity_flag = bitwise_parity((uint8_t)result);
+    handle_zsp_flags(cpu, result);
 
     cpu_set_reg(cpu, dst_reg, (uint8_t)result);
     cpu->pc += 1;
@@ -401,9 +387,7 @@ static inline void cpu_daa(CpuState *cpu) {
 
     cpu->auxilary_flag = ((cpu->a & 0x0F) + (correction & 0x0F)) > 0x0F;
     cpu->carry_flag = cy;
-    cpu->zero_flag = (uint8_t)result == 0x00;
-    cpu->sign_flag = ((uint8_t)result & 0x80) != 0;
-    cpu->parity_flag = bitwise_parity((uint8_t)result);
+    handle_zsp_flags(cpu, result);
     cpu->a = (uint8_t)result;
     cpu->pc += 1;
 }
@@ -417,9 +401,7 @@ static inline void cpu_ana(CpuState *cpu) {
     uint8_t result = a & b;
 
     cpu->auxilary_flag = ((a | b) & 0x08) != 0;
-    cpu->zero_flag = (uint8_t)result == 0x00;
-    cpu->sign_flag = ((uint8_t)result >> 7) == 0x01;
-    cpu->parity_flag = bitwise_parity((uint8_t)result);
+    handle_zsp_flags(cpu, result);
     cpu->carry_flag = 0;
 
     cpu_set_reg(cpu, REG_A, result);
@@ -435,9 +417,7 @@ static inline void cpu_ani(CpuState *cpu) {
     uint8_t result = a & b;
 
     cpu->auxilary_flag = ((a | b) & 0x08) != 0;
-    cpu->zero_flag = (uint8_t)result == 0x00;
-    cpu->sign_flag = ((uint8_t)result >> 7) == 0x01;
-    cpu->parity_flag = bitwise_parity((uint8_t)result);
+    handle_zsp_flags(cpu, result);
     cpu->carry_flag = 0;
 
     cpu_set_reg(cpu, REG_A, result);
@@ -453,9 +433,7 @@ static inline void cpu_ora(CpuState *cpu) {
     uint8_t result = a | b;
 
     cpu->auxilary_flag = 0;
-    cpu->zero_flag = (uint8_t)result == 0x00;
-    cpu->sign_flag = ((uint8_t)result >> 7) == 0x01;
-    cpu->parity_flag = bitwise_parity((uint8_t)result);
+    handle_zsp_flags(cpu, result);
     cpu->carry_flag = 0;
 
     cpu_set_reg(cpu, REG_A, result);
@@ -471,9 +449,7 @@ static inline void cpu_ori(CpuState *cpu) {
     uint8_t result = a | b;
 
     cpu->auxilary_flag = 0;
-    cpu->zero_flag = (uint8_t)result == 0x00;
-    cpu->sign_flag = ((uint8_t)result >> 7) == 0x01;
-    cpu->parity_flag = bitwise_parity((uint8_t)result);
+    handle_zsp_flags(cpu, result);
     cpu->carry_flag = 0;
 
     cpu_set_reg(cpu, REG_A, result);
@@ -489,9 +465,7 @@ static inline void cpu_xra(CpuState *cpu) {
     uint8_t result = a ^ b;
 
     cpu->auxilary_flag = 0;
-    cpu->zero_flag = (uint8_t)result == 0x00;
-    cpu->sign_flag = ((uint8_t)result >> 7) == 0x01;
-    cpu->parity_flag = bitwise_parity((uint8_t)result);
+    handle_zsp_flags(cpu, result);
     cpu->carry_flag = 0;
 
     cpu_set_reg(cpu, REG_A, result);
@@ -507,9 +481,7 @@ static inline void cpu_xri(CpuState *cpu) {
     uint8_t result = a ^ b;
 
     cpu->auxilary_flag = 0;
-    cpu->zero_flag = (uint8_t)result == 0x00;
-    cpu->sign_flag = ((uint8_t)result >> 7) == 0x01;
-    cpu->parity_flag = bitwise_parity((uint8_t)result);
+    handle_zsp_flags(cpu, result);
     cpu->carry_flag = 0;
 
     cpu_set_reg(cpu, REG_A, result);
@@ -524,9 +496,7 @@ static inline void cpu_cmp(CpuState *cpu) {
     uint16_t result = a - b;
 
     cpu->auxilary_flag = (a & 0x0F) < (b & 0x0F);
-    cpu->zero_flag = (uint8_t)result == 0x00;
-    cpu->sign_flag = ((uint8_t)result >> 7) == 0x01;
-    cpu->parity_flag = bitwise_parity((uint8_t)result);
+    handle_zsp_flags(cpu, result);
     cpu->carry_flag = (result & 0xFF00) == 0x0100;
 
     cpu->pc += 1;
@@ -540,9 +510,7 @@ static inline void cpu_cpi(CpuState *cpu) {
     uint16_t result = a - b;
 
     cpu->auxilary_flag = (a & 0x0F) < (b & 0x0F);
-    cpu->zero_flag = (uint8_t)result == 0x00;
-    cpu->sign_flag = ((uint8_t)result >> 7) == 0x01;
-    cpu->parity_flag = bitwise_parity((uint8_t)result);
+    handle_zsp_flags(cpu, result);
     cpu->carry_flag = (result & 0xFF00) != 0;
 
     cpu->pc += 2;
