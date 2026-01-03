@@ -763,7 +763,7 @@ static inline void cpu_nop(CpuState *cpu) {
 }
 
 // returns number of cycles consumed by instruction
-static inline int cpu_step(CpuState *cpu) {
+int cpu_step(CpuState *cpu) {
     switch (read_byte(cpu, 0)) {
         case 0x00: case 0x10: case 0x20: case 0x30:
         case 0x08: case 0x18: case 0x28: case 0x38:

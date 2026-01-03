@@ -52,3 +52,5 @@ typedef struct {
 
     uint8_t* mem;
 } CpuState;
+
+int cpu_step(CpuState *cpu);
