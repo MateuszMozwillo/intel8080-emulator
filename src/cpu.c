@@ -93,9 +93,7 @@ static inline void cpu_stack_push(CpuState *cpu, uint16_t val) {
 }
 
 static inline bool bitwise_parity(uint8_t n) {
-    #ifdef __GNUC__
-        return !__builtin_parity(n);
-    #elif defined(__clang__)
+    #if defined(__GNUC__) || defined(__clang__)
         return !__builtin_parity(n);
     #else
         n ^= n >> 4;
@@ -104,8 +102,8 @@ static inline bool bitwise_parity(uint8_t n) {
         return !(n & 1);
     #endif
 }
-
-// returns byte from memory location at program counter + offset
+// returns byte from memory
+//  location at program counter + offset
 static inline uint8_t read_byte(CpuState *cpu, uint8_t pc_offset) {
     return cpu->mem[cpu->pc+pc_offset];
 }
