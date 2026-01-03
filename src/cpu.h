@@ -48,6 +48,11 @@ typedef struct {
     bool halted;
     bool interruptible;
 
+    uint8_t port0;
+    uint8_t port1;
+    uint8_t port2;
+    uint8_t port3;
+
     uint64_t cycle;
 
     uint8_t* mem;

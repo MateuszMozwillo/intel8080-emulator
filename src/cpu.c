@@ -703,7 +703,22 @@ static inline void cpu_sphl(CpuState *cpu) {
 static inline void cpu_in(CpuState *cpu) {
     uint8_t port = read_byte(cpu, 1);
 
-    // TODO: do something with this
+    switch (port) {
+        case 0:
+            cpu->a = cpu->port0;
+            break;
+        case 1:
+            cpu->a = cpu->port1;
+            break;
+        case 2:
+            cpu->a = cpu->port2;
+            break;
+        case 3:
+            cpu->a = cpu->port3;
+            break;
+        default:
+            break;
+    }
 
     cpu->pc += 2;
 }
