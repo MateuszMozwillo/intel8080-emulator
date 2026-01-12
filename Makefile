@@ -4,10 +4,7 @@ SDL_CFLAGS = $(shell sdl2-config --cflags)
 SDL_LIBS = $(shell sdl2-config --libs)
 
 run: build
-	./main
+	./i8080
 
 build:
-	gcc -Wall $(SDL_CFLAGS) $(SRC) -o main $(SDL_LIBS)
-
-clean:
-	rm -f main
+	gcc -Wall $(SDL_CFLAGS) $(SRC) -o i8080 $(SDL_LIBS)

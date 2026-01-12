@@ -338,7 +338,7 @@ static inline void cpu_inx(CpuState *cpu) {
     RegisterPair rp = extract_reg_pair(read_byte(cpu, 0));
     uint16_t rp_val = cpu_get_reg_pair(cpu, rp);
     uint16_t result = rp_val + 1;
-    cpu_set_reg_pair(cpu, rp, result & 0x0F, result & 0xF0);
+    cpu_set_reg_pair(cpu, rp, (uint8_t)(result & 0xFF), (uint8_t)(result >> 8));
     cpu->pc += 1;
 }
 
@@ -347,7 +347,7 @@ static inline void cpu_dcx(CpuState *cpu) {
     RegisterPair rp = extract_reg_pair(read_byte(cpu, 0));
     uint16_t rp_val = cpu_get_reg_pair(cpu, rp);
     uint16_t result = rp_val - 1;
-    cpu_set_reg_pair(cpu, rp, result & 0x0F, result & 0xF0);
+    cpu_set_reg_pair(cpu, rp, (uint8_t)(result & 0xFF), (uint8_t)(result >> 8));
     cpu->pc += 1;
 }
 
