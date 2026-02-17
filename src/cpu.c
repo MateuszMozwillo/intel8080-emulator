@@ -1,7 +1,14 @@
 #include "cpu.h"
-#include <cstdint>
 #include <stdint.h>
 #include <sys/types.h>
+
+static inline uint8_t bus_read(Bus *bus, uint16_t addr) {
+    return bus->mem[addr];
+}
+
+static inline void bus_write(Bus* bus, uint16_t addr, uint8_t val) {
+    bus->mem[addr] = val;
+}
 
 static inline Register extract_dst_reg(uint8_t opcode) {
     return (Register)((opcode >> 3) & 0x07);
@@ -48,7 +55,7 @@ static inline uint16_t cpu_get_reg_pair(CpuState *cpu, RegisterPair rp) {
 
 static inline uint8_t cpu_read_reg(CpuState *cpu, Register r) {
     switch(r) {
-        case REG_M: return cpu->mem[cpu_get_hl(cpu)];
+        case REG_M: return bus_read(cpu->bus, cpu_get_hl(cpu));
         case REG_B: return cpu->b;
         case REG_C: return cpu->c;
         case REG_D: return cpu->d;
@@ -62,7 +69,7 @@ static inline uint8_t cpu_read_reg(CpuState *cpu, Register r) {
 
 static inline void cpu_set_reg(CpuState *cpu, Register r, uint8_t val) {
     switch(r) {
-        case REG_M: cpu->mem[cpu_get_hl(cpu)] = val; break;
+        case REG_M: bus_write(cpu->bus, cpu_get_hl(cpu), val); break;
         case REG_B: cpu->b = val; break;
         case REG_C: cpu->c = val; break;
         case REG_D: cpu->d = val; break;
@@ -88,8 +95,8 @@ static inline bool check_condition(CpuState *cpu, ConditionCode condition_code) 
 }
 
 static inline void cpu_stack_push(CpuState *cpu, uint16_t val) {
-    cpu->mem[cpu->sp - 1] = (uint8_t)(val >> 8);
-    cpu->mem[cpu->sp - 2] = (uint8_t)(val);
+    bus_write(cpu->bus, cpu->sp-1, (uint8_t)(val >> 8));
+    bus_write(cpu->bus, cpu->sp-2, (uint8_t)(val));
     cpu->sp -= 2;
 }
 
@@ -113,11 +120,11 @@ static inline void handle_zsp_flags(CpuState *cpu, uint16_t result) {
 // returns byte from memory
 // location at program counter + offset
 static inline uint8_t read_byte(CpuState *cpu, uint8_t pc_offset) {
-    return cpu->mem[cpu->pc+pc_offset];
+    return bus_read(cpu->bus, cpu->pc+pc_offset);
 }
 
 static inline uint8_t cpu_fetch(CpuState *cpu) {
-    return cpu->mem[cpu->pc++];
+    return bus_read(cpu->bus, cpu->pc++);
 }
 
 static inline uint16_t cpu_fetch_word(CpuState *cpu) {
@@ -148,21 +155,23 @@ static inline void cpu_lxi(CpuState *cpu) {
 // LDA  00111010 lb hb   (loads data from address to reg A)
 static inline void cpu_lda(CpuState *cpu) {
     cpu_fetch(cpu);
-    cpu->a = cpu->mem[lb_hb_to_uint16(cpu_fetch(cpu), cpu_fetch(cpu))];
+    uint16_t addr = lb_hb_to_uint16(cpu_fetch(cpu), cpu_fetch(cpu));
+    cpu->a = bus_read(cpu->bus, addr);
 }
 
 // STA  00110010 lb hb   (stores reg A to address)
 static inline void cpu_sta(CpuState *cpu) {
     cpu_fetch(cpu);
-    cpu->mem[lb_hb_to_uint16(cpu_fetch(cpu), cpu_fetch(cpu))] = cpu->a;
+    uint16_t addr = lb_hb_to_uint16(cpu_fetch(cpu), cpu_fetch(cpu));
+    bus_write(cpu->bus, addr, cpu->a);
 }
 
 // LHLD 00101010 lb hb   (load hl pair from mem)
 static inline void cpu_lhld(CpuState *cpu) {
     cpu_fetch(cpu);
     uint16_t addr = lb_hb_to_uint16(cpu_fetch(cpu), cpu_fetch(cpu));
-    cpu->l = cpu->mem[addr];
-    cpu->h = cpu->mem[addr + 1];
+    cpu->l = bus_read(cpu->bus, addr);
+    cpu->h = bus_read(cpu->bus, addr + 1);
 }
 
 // SHLD 00100010 lb hb   (stores hl to mem)
@@ -170,18 +179,20 @@ static inline void cpu_shld(CpuState *cpu) {
     cpu_fetch(cpu);
     uint16_t addrs_to_store = cpu_fetch_word(cpu);
 
-    cpu->mem[addrs_to_store] = cpu_read_reg(cpu, REG_L);
-    cpu->mem[addrs_to_store+1] = cpu_read_reg(cpu, REG_H);
+    bus_write(cpu->bus, addrs_to_store, cpu_read_reg(cpu, REG_L));
+    bus_write(cpu->bus, addrs_to_store + 1, cpu_read_reg(cpu, REG_H));
 }
 
 // LDAX 00RP1010         (loads value from address from RP to A reg only BC or DE)
 static inline void cpu_ldax(CpuState *cpu) {
-    cpu->a = cpu->mem[cpu_get_reg_pair(cpu, extract_reg_pair(cpu_fetch(cpu)))];
+    uint16_t addr = cpu_get_reg_pair(cpu, extract_reg_pair(cpu_fetch(cpu)));
+    cpu->a = bus_read(cpu->bus, addr);
 }
 
 // STAX 00RP0010         (stores value from A reg to adress from RP)
 static inline void cpu_stax(CpuState *cpu) {
-    cpu->mem[cpu_get_reg_pair(cpu, extract_reg_pair(cpu_fetch(cpu)))] = cpu->a;
+    uint16_t addr = cpu_get_reg_pair(cpu, extract_reg_pair(cpu_fetch(cpu)));
+    bus_write(cpu->bus, addr, cpu->a);
 }
 
 // XCHG 11101011         (exchanges hl with de)
@@ -468,7 +479,7 @@ static inline void cpu_xra(CpuState *cpu) {
 static inline void cpu_xri(CpuState *cpu) {
     cpu_fetch(cpu);
     uint8_t a = cpu_read_reg(cpu, REG_A);
-    uint8_t b = read_byte(cpu, cpu_fetch(cpu));
+    uint8_t b = cpu_fetch(cpu);
 
     uint8_t result = a ^ b;
 
@@ -595,8 +606,8 @@ static inline bool cpu_Cccc(CpuState *cpu) {
 
 // RET 11001001              (unconditional return from subrutine)
 static inline void cpu_ret(CpuState *cpu) {
-    uint8_t lo = cpu->mem[cpu->sp];
-    uint8_t hi = cpu->mem[cpu->sp + 1];
+    uint8_t lo = bus_read(cpu->bus, cpu->sp);
+    uint8_t hi = bus_read(cpu->bus, cpu->sp + 1);
     cpu->pc = lb_hb_to_uint16(lo, hi);
     cpu->sp += 2;
 }
@@ -646,8 +657,8 @@ static inline void cpu_push(CpuState *cpu) {
 static inline void cpu_pop(CpuState *cpu) {
     RegisterPair rp = extract_reg_pair(cpu_fetch(cpu));
 
-    uint8_t low_byte = cpu->mem[cpu->sp];
-    uint8_t high_byte = cpu->mem[cpu->sp + 1];
+    uint8_t low_byte = bus_read(cpu->bus, cpu->sp);
+    uint8_t high_byte = bus_read(cpu->bus, cpu->sp + 1);
 
     cpu->sp += 2;
 
@@ -668,11 +679,11 @@ static inline void cpu_pop(CpuState *cpu) {
 // XTHL 11100011             (Exchange top of stack with HL)
 static inline void cpu_xthl(CpuState *cpu) {
     cpu_fetch(cpu);
-    uint8_t stack_lo = cpu->mem[cpu->sp];
-    uint8_t stack_hi = cpu->mem[cpu->sp + 1];
+    uint8_t stack_lo = bus_read(cpu->bus, cpu->sp);
+    uint8_t stack_hi = bus_read(cpu->bus, cpu->sp + 1);
 
-    cpu->mem[cpu->sp] = cpu->l;
-    cpu->mem[cpu->sp + 1] = cpu->h;
+    bus_write(cpu->bus, cpu->sp, cpu->l);
+    bus_write(cpu->bus, cpu->sp + 1, cpu->h);
 
     cpu->l = stack_lo;
     cpu->h = stack_hi;

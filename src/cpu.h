@@ -35,6 +35,10 @@ typedef enum {
 } ConditionCode;
 
 typedef struct {
+    uint8_t mem[0x4000];
+} Bus;
+
+typedef struct {
     uint8_t a, b, c, d, e, h, l;
 
     uint16_t sp, pc;
@@ -55,7 +59,7 @@ typedef struct {
 
     uint64_t cycle;
 
-    uint8_t* mem;
+    Bus *bus;
 } CpuState;
 
 int cpu_step(CpuState *cpu);
