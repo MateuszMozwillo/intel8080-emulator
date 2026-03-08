@@ -1,5 +1,6 @@
 #include "cpu.h"
 #include <stdint.h>
+#include <stdio.h>
 #include <sys/types.h>
 
 static inline uint8_t bus_read(Bus *bus, uint16_t addr) {
@@ -7,6 +8,10 @@ static inline uint8_t bus_read(Bus *bus, uint16_t addr) {
 }
 
 static inline void bus_write(Bus* bus, uint16_t addr, uint8_t val) {
+    if (addr < bus->rom_size) {
+        printf("ERROR: trying to write to rom\n");
+        return;
+    }
     bus->mem[addr] = val;
 }
 
@@ -701,22 +706,7 @@ static inline void cpu_in(CpuState *cpu) {
 
     uint8_t port = cpu_fetch(cpu);
 
-    switch (port) {
-        case 0:
-            cpu->a = cpu->port0;
-            break;
-        case 1:
-            cpu->a = cpu->port1;
-            break;
-        case 2:
-            cpu->a = cpu->port2;
-            break;
-        case 3:
-            cpu->a = cpu->port3;
-            break;
-        default:
-            break;
-    }
+    // TODO: do something with this
 }
 
 // OUT 11010011 pa           (Write A to output port)
@@ -725,7 +715,13 @@ static inline void cpu_out(CpuState *cpu) {
     uint8_t port = cpu_fetch(cpu);
     uint8_t data = cpu->a;
 
-    // TODO: do something with this
+    switch (port) {
+        case 1:
+            printf("%d\n", cpu->a);
+            break;
+        default:
+            break;
+    }
 }
 
 // EI 11111011               (Enable interrupts)

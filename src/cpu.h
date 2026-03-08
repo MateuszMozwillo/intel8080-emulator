@@ -35,7 +35,8 @@ typedef enum {
 } ConditionCode;
 
 typedef struct {
-    uint8_t mem[0x4000];
+    size_t rom_size;
+    uint8_t *mem;
 } Bus;
 
 typedef struct {
