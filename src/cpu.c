@@ -8,10 +8,10 @@ static inline uint8_t bus_read(Bus *bus, uint16_t addr) {
 }
 
 static inline void bus_write(Bus* bus, uint16_t addr, uint8_t val) {
-    if (addr < bus->rom_size) {
-        printf("ERROR: trying to write to rom\n");
-        return;
-    }
+    // if (addr < bus->rom_size) {
+    //     printf("ERROR: trying to write to rom\n");
+    //     return;
+    // }
     bus->mem[addr] = val;
 }
 
