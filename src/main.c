@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include "cpu.h"
 #include <string.h>
@@ -38,13 +39,13 @@ int load_bytecode(const char *filename, ByteCode *out_bc) {
 int main(int argc, char *argv[]) {
 
     if (argc != 2) {
-        printf("ERROR: invalid argument count specify path to input file\n");
+        fprintf(stderr, "ERROR: invalid argument count specify path to input file\n");
         return 1;
     }
 
     ByteCode byte_code;
     if (!load_bytecode(argv[1], &byte_code)) {
-        printf("ERROR: error while loading bytecode\n");
+        fprintf(stderr, "ERROR: error while loading bytecode\n");
         return 1;
     }
 
