@@ -35,8 +35,6 @@ int load_bytecode(const char *filename, ByteCode *out_bc) {
     return 1;
 }
 
-#define MAX_FILENAME_LEN 100
-
 int main(int argc, char *argv[]) {
 
     if (argc != 2) {
