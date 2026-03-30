@@ -1,3 +1,4 @@
 *.exe
 .vscode
 i8080
+run_tests
