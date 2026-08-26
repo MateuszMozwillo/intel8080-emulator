@@ -1,12 +1,9 @@
 SRC = $(wildcard src/*.c)
 
-SDL_CFLAGS = $(shell sdl2-config --cflags)
-SDL_LIBS = $(shell sdl2-config --libs)
-
 CORE_SRC = src/cpu.c
 
 build:
-	gcc -Wall $(SDL_CFLAGS) $(SRC) -o i8080 $(SDL_LIBS)
+	gcc -Wall $(SRC) -o i8080
 
 TEST_SRC = tests/test_main.c
 TEST_BIN = run_tests
@@ -15,4 +12,11 @@ test:
 	$(CC) $(CFLAGS) $(CORE_SRC) $(TEST_SRC) -o $(TEST_BIN)
 	./$(TEST_BIN)
 
-.PHONY: build test
+coverage:
+	mkdir -p coverage
+	gcc -Wall -g --coverage $(CORE_SRC) $(TEST_SRC) -o $(TEST_BIN)
+	./$(TEST_BIN)
+	gcovr --html-details -o coverage/coverage.html
+	rm -f *.gcno *.gcda
+
+.PHONY: build test coverage

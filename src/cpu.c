@@ -504,7 +504,7 @@ static inline void cpu_cmp(CpuState *cpu) {
 
     cpu->auxilary_flag = (a & 0x0F) < (b & 0x0F);
     handle_zsp_flags(cpu, result);
-    cpu->carry_flag = (result & 0xFF00) == 0x0100;
+    cpu->carry_flag = (result & 0xFF00) != 0;
 }
 
 // CPI 11111110 DB          (compare immediate with A)
