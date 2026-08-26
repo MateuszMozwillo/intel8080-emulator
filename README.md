@@ -18,7 +18,7 @@ make build
 
 To run the emulator:
 ```
-./intel8080-emulator <path_to_rom>
+./i8080 <path_to_rom>
 ```
 
 To run unittests:
