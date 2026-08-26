@@ -30,4 +30,4 @@ To generate a code coverage report:
 ```
 make coverage
 ```
-The HTML report will be generated in the coverage/ directory. Open coverage/coverage.html to view it.
+The HTML report will be generated in the coverage/ directory.
