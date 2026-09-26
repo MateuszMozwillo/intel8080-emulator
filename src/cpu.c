@@ -133,7 +133,9 @@ static inline uint8_t cpu_fetch(CpuState *cpu) {
 }
 
 static inline uint16_t cpu_fetch_word(CpuState *cpu) {
-    return lb_hb_to_uint16(cpu_fetch(cpu), cpu_fetch(cpu));
+    uint8_t low_byte = cpu_fetch(cpu);
+    uint8_t high_byte = cpu_fetch(cpu);
+    return lb_hb_to_uint16(low_byte, high_byte);
 }
 
 // MOV  01DDDSSS         (moves DDD reg to SSS reg)
@@ -154,27 +156,29 @@ static inline void cpu_mvi(CpuState *cpu) {
 // LXI  00RP0001 lb hb   (loads 16 bit immediate to register pair)
 static inline void cpu_lxi(CpuState *cpu) {
     RegisterPair dst = extract_reg_pair(cpu_fetch(cpu));
-    cpu_set_reg_pair(cpu, dst, cpu_fetch(cpu), cpu_fetch(cpu));
+    uint8_t low_byte = cpu_fetch(cpu);
+    uint8_t high_byte = cpu_fetch(cpu);
+    cpu_set_reg_pair(cpu, dst, low_byte, high_byte);
 }
 
 // LDA  00111010 lb hb   (loads data from address to reg A)
 static inline void cpu_lda(CpuState *cpu) {
     cpu_fetch(cpu);
-    uint16_t addr = lb_hb_to_uint16(cpu_fetch(cpu), cpu_fetch(cpu));
+    uint16_t addr = cpu_fetch_word(cpu);
     cpu->a = bus_read(cpu->bus, addr);
 }
 
 // STA  00110010 lb hb   (stores reg A to address)
 static inline void cpu_sta(CpuState *cpu) {
     cpu_fetch(cpu);
-    uint16_t addr = lb_hb_to_uint16(cpu_fetch(cpu), cpu_fetch(cpu));
+    uint16_t addr = cpu_fetch_word(cpu);
     bus_write(cpu->bus, addr, cpu->a);
 }
 
 // LHLD 00101010 lb hb   (load hl pair from mem)
 static inline void cpu_lhld(CpuState *cpu) {
     cpu_fetch(cpu);
-    uint16_t addr = lb_hb_to_uint16(cpu_fetch(cpu), cpu_fetch(cpu));
+    uint16_t addr = cpu_fetch_word(cpu);
     cpu->l = bus_read(cpu->bus, addr);
     cpu->h = bus_read(cpu->bus, addr + 1);
 }
