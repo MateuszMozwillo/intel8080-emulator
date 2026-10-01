@@ -31,3 +31,22 @@ To generate a code coverage report:
 make coverage
 ```
 The HTML report will be generated in the coverage/ directory.
+
+## CPU test ROMs
+
+| ROM | Result |
+|---|---|
+| `TST8080.COM` | CPU IS OPERATIONAL |
+| `8080PRE.COM` | 8080 Preliminary tests complete |
+| `CPUTEST.COM` | CPU TESTS OK |
+| `8080EXM.COM` | all 25 instruction groups PASS |
+
+To build the test runner:
+```
+make cpm
+```
+
+To run a test ROM:
+```
+./cpm_runner roms/TST8080.COM
+```

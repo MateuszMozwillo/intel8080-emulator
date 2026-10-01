@@ -12,6 +12,12 @@ test:
 	$(CC) $(CFLAGS) $(CORE_SRC) $(TEST_SRC) -o $(TEST_BIN)
 	./$(TEST_BIN)
 
+CPM_SRC = tests/cpm_runner.c
+CPM_BIN = cpm_runner
+
+cpm:
+	$(CC) -Wall -O2 $(CORE_SRC) $(CPM_SRC) -o $(CPM_BIN)
+
 coverage:
 	mkdir -p coverage
 	gcc -Wall -g --coverage $(CORE_SRC) $(TEST_SRC) -o $(TEST_BIN)
@@ -19,4 +25,4 @@ coverage:
 	gcovr --html-details -o coverage/coverage.html
 	rm -f *.gcno *.gcda
 
-.PHONY: build test coverage
+.PHONY: build test cpm coverage

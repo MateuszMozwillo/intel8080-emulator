@@ -278,7 +278,7 @@ static inline void cpu_sub(CpuState *cpu) {
 
     uint16_t result = a - b;
 
-    cpu->auxilary_flag = (a & 0x0F) < (b & 0x0F);
+    cpu->auxilary_flag = ((a & 0x0F) + (~b & 0x0F) + 1) > 0x0F;
     handle_zsp_flags(cpu, result);
     cpu->carry_flag = (result & 0xFF00) != 0;
 
@@ -293,7 +293,7 @@ static inline void cpu_sui(CpuState *cpu) {
 
     uint16_t result = a - b;
 
-    cpu->auxilary_flag = (a & 0x0F) < (b & 0x0F);
+    cpu->auxilary_flag = ((a & 0x0F) + (~b & 0x0F) + 1) > 0x0F;
     handle_zsp_flags(cpu, result);
     cpu->carry_flag = (result & 0xFF00) != 0;
 
@@ -307,7 +307,7 @@ static inline void cpu_sbb(CpuState *cpu) {
 
     uint16_t result = a - b - cpu->carry_flag;
 
-    cpu->auxilary_flag = (a & 0x0F) < ((b & 0x0F) + cpu->carry_flag);
+    cpu->auxilary_flag = ((a & 0x0F) + (~b & 0x0F) + !cpu->carry_flag) > 0x0F;
     handle_zsp_flags(cpu, result);
     cpu->carry_flag = (result & 0xFF00) != 0;
 
@@ -322,7 +322,7 @@ static inline void cpu_sbi(CpuState *cpu) {
 
     uint16_t result = a - b - cpu->carry_flag;
 
-    cpu->auxilary_flag = (a & 0x0F) < ((b & 0x0F) + cpu->carry_flag);
+    cpu->auxilary_flag = ((a & 0x0F) + (~b & 0x0F) + !cpu->carry_flag) > 0x0F;
     handle_zsp_flags(cpu, result);
     cpu->carry_flag = (result & 0xFF00) != 0;
 
@@ -347,7 +347,7 @@ static inline void cpu_dcr(CpuState *cpu) {
     uint8_t reg_val = cpu_read_reg(cpu, dst_reg);
     uint16_t result = reg_val - 1;
 
-    cpu->auxilary_flag = (reg_val & 0x0F) == 0x00;
+    cpu->auxilary_flag = (reg_val & 0x0F) != 0x00;
     handle_zsp_flags(cpu, result);
 
     cpu_set_reg(cpu, dst_reg, (uint8_t)result);
@@ -506,7 +506,7 @@ static inline void cpu_cmp(CpuState *cpu) {
 
     uint16_t result = a - b;
 
-    cpu->auxilary_flag = (a & 0x0F) < (b & 0x0F);
+    cpu->auxilary_flag = ((a & 0x0F) + (~b & 0x0F) + 1) > 0x0F;
     handle_zsp_flags(cpu, result);
     cpu->carry_flag = (result & 0xFF00) != 0;
 }
@@ -519,7 +519,7 @@ static inline void cpu_cpi(CpuState *cpu) {
 
     uint16_t result = a - b;
 
-    cpu->auxilary_flag = (a & 0x0F) < (b & 0x0F);
+    cpu->auxilary_flag = ((a & 0x0F) + (~b & 0x0F) + 1) > 0x0F;
     handle_zsp_flags(cpu, result);
     cpu->carry_flag = (result & 0xFF00) != 0;
 

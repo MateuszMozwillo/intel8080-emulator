@@ -316,7 +316,7 @@ TEST(arithmetic_and_compare_instructions) {
 
         EXPECT_EQ(4, cpu_step(&cpu));
         EXPECT_EQ(0xF0, cpu.a);
-        EXPECT_FLAGS(cpu, 0, 1, 1, 1, 0);
+        EXPECT_FLAGS(cpu, 0, 1, 1, 1, 1);
     }
 
     {
@@ -330,7 +330,7 @@ TEST(arithmetic_and_compare_instructions) {
 
         EXPECT_EQ(4, cpu_step(&cpu));
         EXPECT_EQ(0x00, cpu.a);
-        EXPECT_FLAGS(cpu, 1, 0, 1, 0, 1);
+        EXPECT_FLAGS(cpu, 1, 0, 1, 0, 0);
     }
 
     {
@@ -344,7 +344,7 @@ TEST(arithmetic_and_compare_instructions) {
 
         EXPECT_EQ(7, cpu_step(&cpu));
         EXPECT_EQ(0xFF, cpu.a);
-        EXPECT_FLAGS(cpu, 0, 1, 1, 1, 1);
+        EXPECT_FLAGS(cpu, 0, 1, 1, 1, 0);
         EXPECT_EQ(2, cpu.pc);
     }
 
@@ -360,7 +360,7 @@ TEST(arithmetic_and_compare_instructions) {
 
         EXPECT_EQ(7, cpu_step(&cpu));
         EXPECT_EQ(0x00, cpu.a);
-        EXPECT_FLAGS(cpu, 1, 0, 1, 0, 1);
+        EXPECT_FLAGS(cpu, 1, 0, 1, 0, 0);
         EXPECT_EQ(2, cpu.pc);
     }
 
@@ -375,7 +375,7 @@ TEST(arithmetic_and_compare_instructions) {
 
         EXPECT_EQ(4, cpu_step(&cpu));
         EXPECT_EQ(0x42, cpu.a);
-        EXPECT_FLAGS(cpu, 1, 0, 1, 0, 0);
+        EXPECT_FLAGS(cpu, 1, 0, 1, 0, 1);
     }
 
     {
@@ -389,7 +389,7 @@ TEST(arithmetic_and_compare_instructions) {
 
         EXPECT_EQ(4, cpu_step(&cpu));
         EXPECT_EQ(0x10, cpu.a);
-        EXPECT_FLAGS(cpu, 0, 1, 1, 1, 0);
+        EXPECT_FLAGS(cpu, 0, 1, 1, 1, 1);
     }
 
     {
@@ -403,7 +403,7 @@ TEST(arithmetic_and_compare_instructions) {
 
         EXPECT_EQ(7, cpu_step(&cpu));
         EXPECT_EQ(0x10, cpu.a);
-        EXPECT_FLAGS(cpu, 0, 0, 0, 0, 1);
+        EXPECT_FLAGS(cpu, 0, 0, 0, 0, 0);
         EXPECT_EQ(2, cpu.pc);
     }
 
@@ -469,7 +469,7 @@ TEST(increment_and_register_pair_instructions) {
 
         EXPECT_EQ(5, cpu_step(&cpu));
         EXPECT_EQ(0xFF, cpu.c);
-        EXPECT_FLAGS(cpu, 0, 1, 1, 0, 1);
+        EXPECT_FLAGS(cpu, 0, 1, 1, 0, 0);
         EXPECT_EQ(0x22, cpu.b);
         EXPECT_EQ(0x11, cpu.a);
     }
