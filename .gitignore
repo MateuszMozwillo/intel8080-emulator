@@ -3,3 +3,4 @@
 i8080
 run_tests
 cpm_runner
+coverage

@@ -520,6 +520,87 @@ TEST(increment_and_register_pair_instructions) {
     }
 }
 
+static uint8_t *reg_ptr(CpuState *cpu, int r) {
+    switch (r) {
+        case 0: return &cpu->b;
+        case 1: return &cpu->c;
+        case 2: return &cpu->d;
+        case 3: return &cpu->e;
+        case 4: return &cpu->h;
+        case 5: return &cpu->l;
+        case 6: return &mem[((uint16_t)cpu->h << 8) | cpu->l];
+        default: return &cpu->a;
+    }
+}
+
+TEST(inr_dcr_all_registers) {
+    // INR r  00DDD100, register r = 0x0F -> 0x10
+    for (int r = 0; r < 8; r++) {
+        SETUP_TEST_CPU();
+
+        cpu.h = 0x00;
+        cpu.l = 0x40;
+        cpu.carry_flag = 1;
+        *reg_ptr(&cpu, r) = 0x0F;
+        mem[0] = 0x04 | (r << 3);
+
+        EXPECT_EQ(r == 6 ? 10 : 5, cpu_step(&cpu));
+        EXPECT_EQ(0x10, *reg_ptr(&cpu, r));
+        EXPECT_FLAGS(cpu, 0, 0, 0, 1, 1);
+        EXPECT_EQ(1, cpu.pc);
+    }
+
+    // DCR r  00DDD101, register r = 0x10 -> 0x0F
+    for (int r = 0; r < 8; r++) {
+        SETUP_TEST_CPU();
+
+        cpu.h = 0x00;
+        cpu.l = 0x40;
+        cpu.carry_flag = 1;
+        *reg_ptr(&cpu, r) = 0x10;
+        mem[0] = 0x05 | (r << 3);
+
+        EXPECT_EQ(r == 6 ? 10 : 5, cpu_step(&cpu));
+        EXPECT_EQ(0x0F, *reg_ptr(&cpu, r));
+        EXPECT_FLAGS(cpu, 0, 0, 1, 1, 0);
+        EXPECT_EQ(1, cpu.pc);
+    }
+}
+
+TEST(alu_memory_operand_instructions) {
+    struct {
+        uint8_t opcode, a, m, carry_in;
+        uint8_t result;
+        uint8_t z, s, p, cy, ac;
+    } cases[] = {
+        { 0x86, 0x3A, 0xC6, 0, 0x00, 1, 0, 1, 1, 1 }, // ADD M
+        { 0x8E, 0x3D, 0x42, 1, 0x80, 0, 1, 0, 0, 1 }, // ADC M
+        { 0x96, 0x3E, 0x3E, 0, 0x00, 1, 0, 1, 0, 1 }, // SUB M
+        { 0x9E, 0x04, 0x02, 1, 0x01, 0, 0, 0, 0, 1 }, // SBB M
+        { 0xA6, 0xFC, 0x0F, 1, 0x0C, 0, 0, 1, 0, 1 }, // ANA M
+        { 0xAE, 0x5C, 0x5C, 1, 0x00, 1, 0, 1, 0, 0 }, // XRA M
+        { 0xB6, 0x33, 0x0F, 1, 0x3F, 0, 0, 1, 0, 0 }, // ORA M
+        { 0xBE, 0x02, 0x05, 0, 0x02, 0, 1, 0, 1, 0 }, // CMP M (A unchanged)
+    };
+
+    for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
+        SETUP_TEST_CPU();
+
+        mem[0] = cases[i].opcode;
+        mem[0x40] = cases[i].m;
+        cpu.h = 0x00;
+        cpu.l = 0x40;
+        cpu.a = cases[i].a;
+        cpu.carry_flag = cases[i].carry_in;
+
+        EXPECT_EQ(7, cpu_step(&cpu));
+        EXPECT_EQ(cases[i].result, cpu.a);
+        EXPECT_FLAGS(cpu, cases[i].z, cases[i].s, cases[i].p, cases[i].cy, cases[i].ac);
+        EXPECT_EQ(cases[i].m, mem[0x40]);
+        EXPECT_EQ(1, cpu.pc);
+    }
+}
+
 TEST(logical_instructions) {
     {
         SETUP_TEST_CPU();
@@ -934,6 +1015,26 @@ TEST(stack_and_flow_control_instructions) {
         EXPECT_EQ(5, cpu_step(&cpu));
         EXPECT_EQ(0xBEEF, cpu.sp);
         EXPECT_EQ(1, cpu.pc);
+    }
+}
+
+TEST(conditional_jump_all_conditions) {
+    // Jccc 11CCC010, condition codes in order: NZ, Z, NC, C, PO, PE, P, M
+    for (int cc = 0; cc < 8; cc++) {
+        for (int taken = 0; taken <= 1; taken++) {
+            SETUP_TEST_CPU();
+
+            bool *flags[] = { &cpu.zero_flag, &cpu.carry_flag, &cpu.parity_flag, &cpu.sign_flag };
+            bool true_value = cc & 1;
+            *flags[cc >> 1] = taken ? true_value : !true_value;
+
+            mem[0] = 0xC2 | (cc << 3);
+            mem[1] = 0x40;
+            mem[2] = 0x00;
+
+            EXPECT_EQ(10, cpu_step(&cpu));
+            EXPECT_EQ(taken ? 0x0040 : 3, cpu.pc);
+        }
     }
 }
 
